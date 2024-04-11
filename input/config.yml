@@ -1,0 +1,19 @@
+# see https://cran.r-project.org/web/packages/ymlthis/vignettes/yaml-overview.html
+# for details of writing yaml files
+
+general_params:
+ date_main : "2024-01-09"
+ date_easy : "2024-01-09"
+ input_dir : ./input/
+ output_dir : ./output/
+ reconcile_dir : ./output/reconciliation_data/
+ responses_dir : ./input/responses
+ manifest_dir : ./input/manifest
+ output_frequency : output/frequency-tables/
+ qa_file_dir : input/grouping-regex/qa-files/
+ responses_prefix : "responses_"
+ main_suffix : ".xlsx"
+ easy_suffix : "_easyread.xlsx"
+ hard_copies_flag: "_hard_copies"
+ manifest_file : "manifest.xlsx"
+ 
