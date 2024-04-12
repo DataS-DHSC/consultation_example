@@ -16,4 +16,5 @@ general_params:
  easy_suffix : "_easyread.xlsx"
  hard_copies_flag: "_hard_copies"
  manifest_file : "manifest.xlsx"
- 
+ include_hard_copies: TRUE
+ include_easyread: TRUE
