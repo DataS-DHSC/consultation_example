@@ -6,7 +6,6 @@ general_params:
  date_easy : "2024-01-09"
  input_dir : ./input/
  output_dir : ./output/
- reconcile_dir : ./output/reconciliation_data/
  responses_dir : ./input/responses
  manifest_dir : ./input/manifest
  output_frequency : output/frequency-tables/
