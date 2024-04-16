@@ -1,6 +1,3 @@
-library(dplyr)
-library(stringr)
-
 
 # Data loading and cleaning -----------------------------------------------
 

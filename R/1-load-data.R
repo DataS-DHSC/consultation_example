@@ -1,12 +1,5 @@
 library(DHSClogger)
-library(dplyr)
-library(readxl)
-library(readr)
 library(writexl)
-library(magrittr)
-library(purrr)
-library(tidyr)
-library(stringr)
 
 # Read the config file
 config <- yaml::read_yaml(
@@ -25,8 +18,8 @@ source("R/helpful_functions.R")
 #'
 run_load_data <- function() {
   
-  # logger$info("In run_load_data")
-  
+  logger$info("In run_load_data")
+  logger$info("Reading in data...")
   # Read in main and bind with main hard copy responses
   responses <- read_xlsx(
     path_responses, 
@@ -69,8 +62,11 @@ run_load_data <- function() {
             )
         )
     }
+    logger$info("Data read sucessfully.")
     
     # Read in data manifest sheets
+    logger$info("Standardising data using manifest...")
+    
     manifest_path <- file.path(
       general_params$manifest_dir,
       general_params$manifest_file
@@ -109,6 +105,8 @@ run_load_data <- function() {
       responses_easy[[current_question]] <- current_choice
     }
     
+    logger$info("Standardising data further...")
+    
     # Fix ages in free text easyread
     responses_easy <- responses_easy %>% 
       mutate(`What is your age?` = text_to_age(`What is your age?`))
@@ -116,10 +114,14 @@ run_load_data <- function() {
     # Join into one big table
     responses_all <- bind_rows(responses, responses_easy) %>% 
       select(all_of(names(responses)))
+    
+    logger$info("Data standardised sucessfully.")
   } else {
     # If there's no easyread data to deal with, just skip the above
     responses_all <- responses
   }
+  
+  logger$info("Further data cleaning...")
   
   # Remove any responses that haven't been completed and remove redundant cols
   responses_all <- responses_all %>% 
@@ -128,7 +130,11 @@ run_load_data <- function() {
       -c(manifests$all %>% filter(omit) %>% pull(question))
     )
   
+  logger$info("Data cleaned successfully.")
+  
   # Output frequency table pre-location filtering
+  logger$info("Saving to file...")
+  
   responses_all %>%
     write.csv(
       paste0(
@@ -140,6 +146,8 @@ run_load_data <- function() {
       row.names = FALSE,
       na = ""
     )
+  
+  logger$info("Data saved.")
   
   
   # Any further filtering, such as keeping only responses from individuals, 
