@@ -1,14 +1,4 @@
-library(DHSClogger)
 library(writexl)
-
-# Read the config file
-config <- yaml::read_yaml(
-  file.path("input", "config.yml"),
-  readLines.warn = FALSE
-)
-general_params <- config$general_params
-
-source("R/helpful_functions.R")
 
 #' run_load_data - this function loads, standardises, and combines the main, 
 #' easyread, and respective hard copy data into one clean table.
@@ -72,11 +62,9 @@ run_load_data <- function() {
       general_params$manifest_file
     )
     
-    manifest_sheets <- excel_sheets(manifest_path)
-    
-    manifests <- setNames(lapply(manifest_sheets, function(sheet_name) {
-      read_xlsx(manifest_path, sheet = sheet_name, na = c("", "NA"))
-    }), manifest_sheets)
+    manifests <- excel_sheets(manifest_path) %>%
+      set_names() %>%
+      map(~ read_xlsx(manifest_path, sheet = .x, na = c("", "NA")))
     
     # Standardise possible responses (using manifest)
     updated_data <- standardise_mappings(responses, responses_easy, manifests)
@@ -96,12 +84,12 @@ run_load_data <- function() {
     
     # Add assumed fields (using manifest)
     assumed_responses <- manifests$all %>% 
-      filter(!is.na(assumed_answer)) %>% 
-      select(question, assumed_answer)
+      filter(!is.na(assumed_easy)) %>% 
+      select(question, assumed_easy)
     
     for (i in 1:nrow(assumed_responses)) {
       current_question <- assumed_responses$question[i]
-      current_choice <- assumed_responses$assumed_answer[i]
+      current_choice <- assumed_responses$assumed_easy[i]
       responses_easy[[current_question]] <- current_choice
     }
     
