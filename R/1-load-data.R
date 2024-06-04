@@ -66,6 +66,10 @@ run_load_data <- function() {
       set_names() %>%
       map(~ read_xlsx(manifest_path, sheet = .x, na = c("", "NA")))
     
+    manifest_mapping_names <- tibble(names = names(manifests)) %>% 
+      filter(!str_detect(names, "^all$")) %>% 
+      pull()
+    
     # Standardise possible responses (using manifest)
     updated_data <- standardise_mappings(responses, responses_easy, manifests)
     responses <- updated_data$responses

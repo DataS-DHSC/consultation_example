@@ -5,7 +5,7 @@ A common issue with the analysis of consultation responses is standardising data
 The data cleaning problem arises due to the questions and possible responses to some questions being different between the data sources. For example...
 
 - Main question: To what extent do you agree with [thing A]?
-  - Possible responses: Strongly agree, Agree, Disagree, Strongly disagree, 
+  - Possible responses: Strongly agree, Agree, Disagree, Strongly disagree, NA
 
 - Corresponding easy read question: How much do you agree or disagree with [thing A]?
   - Possible responses: Definitely agree, Agree, Disagree, Definitely disagree, NA
@@ -19,21 +19,22 @@ The first sheet in [manifest.xlsx](https://github.com/DataS-DHSC/consultation_ex
 
 | Column         | Description                                                 |
 |---------------:|:------------------------------------------------------------|
-| question       | The exact column headers in your main data file.            |
-| type           | The type of data entered into each (multi-choice, long text, etc). |
-| col_id         | The column number, starting at one from the left side.      |
-| question_easy  | The same as `question`, but for easy read data.             |
-| type_easy      | The same as `type`, but for easy read data.                 |
-| col_id_easy    | The same as `col_id`, but for easy read data.               |
-| assumed_easy   | Assumed responses to give to missing columns in the easy read data. |
-| omit           | Irrelevant columns to delete. This should contain only TRUE or FALSE. |
-| likert         | Likert question? This should contain only TRUE or FALSE.    |
+| `question`       | The exact column headers in your main data file.            |
+| `type`           | The type of data entered into each (multi-choice, long text, etc). |
+| `col_id`         | The column number, starting at one from the left side.      |
+| `question_easy`  | The same as `question`, but for easy read data.             |
+| `type_easy`      | The same as `type`, but for easy read data.                 |
+| `col_id_easy`    | The same as `col_id`, but for easy read data.               |
+| `assumed_easy`   | Assumed responses to give to missing columns in the easy read data. |
+| `omit`           | Irrelevant columns to delete. This should contain only TRUE or FALSE. |
+| `custom_map`     | The name of the sheet in manifest.xlsx with the custom mappings for certain questions(s). |
 
-If your data has any likert data (i.e. agree/disagree), fill in the mappings in the map_likert sheet.
 
-For all other columns that have different data that can be mapped from easy read to main, fill in said mappings in a new sheet called map, followed by a digit that corresponds to the col_id of the main question.
+For all other columns that have different data that can be mapped from easy read to main, fill in said mappings in a new sheet called map, followed by a digit that corresponds to the col_id of the main question. 
 
-The example manifest file contains map2, map4, map5, and map6 as they are the only questions that need standardising between main and easy read versions of the data.
+If your data has any common answer type that is used more than once in your data (yes/no, likert, etc.), instead of a digit, just use a custom name such as "map_yesno" or "map_likert" as used in the example.
+
+The example manifest file contains map_yesno, map_likert, map2, map4, and map6 relating to the eight questions that need standardising between main and easy read versions of the data.
 
 In each of these sheets, give the mappings for main, easy read, then the final mappings that everything should be set to.
 
@@ -65,7 +66,7 @@ For example, the map_likert sheet may look something like this...
 | NA | NA | NA |
 
 
-Filling out the manifest carefully should (hopefully) ensure all your data is cleaned and standardised, without the hassle of adding lots of extra code.
+Filling out the manifest carefully should ensure all your data is cleaned and standardised, without the hassle of adding lots of extra code.
 
 
 ### Further tweaking of the data cleaning code
