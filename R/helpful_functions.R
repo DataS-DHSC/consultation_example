@@ -65,7 +65,7 @@ get_columns <- function(manifests_all, filter_expr, col_to_pull) {
 standardise_mappings <- function(responses, responses_easy, manifests) {
   for (df_name in names(manifests)) {
     if (df_name == "all") next
-    if (df_name %in% manifest_mapping_names) {
+    else {
       custom_cols_easy <- get_columns(
         manifests$all,
         manifests$all$custom_map == df_name,
