@@ -65,30 +65,38 @@ get_columns <- function(manifests_all, filter_expr, col_to_pull) {
 standardise_mappings <- function(responses, responses_easy, manifests) {
   for (df_name in names(manifests)) {
     if (df_name == "all") next
-    if (df_name == "map_likert") {
-      # standardise responses for likert questions (agree, disagree, etc)
-      likert_cols_easy <- get_columns(manifests$all, manifests$all$likert, "question_easy")
-      likert_cols_main <- get_columns(manifests$all, manifests$all$likert, "question")
+    else {
+      custom_cols_easy <- get_columns(
+        manifests$all,
+        manifests$all$custom_map == df_name,
+        "question_easy"
+      )
+      replacement_map_easy <- create_replacement_map(
+        manifests[[df_name]],
+        "easy",
+        "final"
+      )
+      responses_easy <- standardise_responses(
+        responses_easy,
+        custom_cols_easy,
+        replacement_map_easy
+      )
       
-      replacement_map_easy <- create_replacement_map(manifests[[df_name]], "easy", "final")
-      replacement_map_main <- create_replacement_map(manifests[[df_name]], "main", "final")
-      
-      responses_easy <- standardise_responses(responses_easy, likert_cols_easy, replacement_map_easy)
-      responses <- standardise_responses(responses, likert_cols_main, replacement_map_main)
-      
-    } else {
-      # standardise responses for other questions with given mappings
-      col_easy <- as.integer(gsub("map", "", df_name))
-      col_main <- get_columns(manifests$all, manifests$all$col_id_easy == col_easy, "col_id")
-      
-      specific_col_easy <- names(responses_easy)[col_easy]
-      specific_col_main <- names(responses)[col_main]
-      
-      replacement_map_easy <- create_replacement_map(manifests[[df_name]], "easy", "final")
-      replacement_map_main <- create_replacement_map(manifests[[df_name]], "main", "final")
-      
-      responses_easy <- standardise_responses(responses_easy, specific_col_easy, replacement_map_easy)
-      responses <- standardise_responses(responses, specific_col_main, replacement_map_main)
+      custom_cols_main <- get_columns(
+        manifests$all,
+        manifests$all$custom_map == df_name,
+        "question"
+      )
+      replacement_map_main <- create_replacement_map(
+        manifests[[df_name]],
+        "main",
+        "final"
+      )
+      responses <- standardise_responses(
+        responses,
+        custom_cols_main,
+        replacement_map_main
+      )
     }
   }
   return(list(responses = responses, responses_easy = responses_easy))

@@ -366,7 +366,7 @@ For example…</p>
 <li>Main question: To what extent do you agree with [thing A]?
 <ul>
 <li>Possible responses: Strongly agree, Agree, Disagree, Strongly
-disagree,</li>
+disagree, NA</li>
 </ul></li>
 <li>Corresponding easy read question: How much do you agree or disagree
 with [thing A]?
@@ -394,60 +394,62 @@ should contain the following:</p>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="right">question</td>
+<td align="right"><code>question</code></td>
 <td align="left">The exact column headers in your main data file.</td>
 </tr>
 <tr class="even">
-<td align="right">type</td>
+<td align="right"><code>type</code></td>
 <td align="left">The type of data entered into each (multi-choice, long
 text, etc).</td>
 </tr>
 <tr class="odd">
-<td align="right">col_id</td>
+<td align="right"><code>col_id</code></td>
 <td align="left">The column number, starting at one from the left
 side.</td>
 </tr>
 <tr class="even">
-<td align="right">question_easy</td>
+<td align="right"><code>question_easy</code></td>
 <td align="left">The same as <code>question</code>, but for easy read
 data.</td>
 </tr>
 <tr class="odd">
-<td align="right">type_easy</td>
+<td align="right"><code>type_easy</code></td>
 <td align="left">The same as <code>type</code>, but for easy read
 data.</td>
 </tr>
 <tr class="even">
-<td align="right">col_id_easy</td>
+<td align="right"><code>col_id_easy</code></td>
 <td align="left">The same as <code>col_id</code>, but for easy read
 data.</td>
 </tr>
 <tr class="odd">
-<td align="right">assumed_easy</td>
+<td align="right"><code>assumed_easy</code></td>
 <td align="left">Assumed responses to give to missing columns in the
 easy read data.</td>
 </tr>
 <tr class="even">
-<td align="right">omit</td>
+<td align="right"><code>omit</code></td>
 <td align="left">Irrelevant columns to delete. This should contain only
 TRUE or FALSE.</td>
 </tr>
 <tr class="odd">
-<td align="right">likert</td>
-<td align="left">Likert question? This should contain only TRUE or
-FALSE.</td>
+<td align="right"><code>custom_map</code></td>
+<td align="left">The name of the sheet in manifest.xlsx with the custom
+mappings for certain questions(s).</td>
 </tr>
 </tbody>
 </table>
-<p>If your data has any likert data (i.e. agree/disagree), fill in the
-mappings in the map_likert sheet.</p>
 <p>For all other columns that have different data that can be mapped
 from easy read to main, fill in said mappings in a new sheet called map,
 followed by a digit that corresponds to the col_id of the main
 question.</p>
-<p>The example manifest file contains map2, map4, map5, and map6 as they
-are the only questions that need standardising between main and easy
-read versions of the data.</p>
+<p>If your data has any common answer type that is used more than once
+in your data (yes/no, likert, etc.), instead of a digit, just use a
+custom name such as “map_yesno” or “map_likert” as used in the
+example.</p>
+<p>The example manifest file contains map_yesno, map_likert, map2, map4,
+and map6 relating to the eight questions that need standardising between
+main and easy read versions of the data.</p>
 <p>In each of these sheets, give the mappings for main, easy read, then
 the final mappings that everything should be set to.</p>
 <p>For example, the map_likert sheet may look something like this…</p>
@@ -559,9 +561,9 @@ the final mappings that everything should be set to.</p>
 </tr>
 </tbody>
 </table>
-<p>Filling out the manifest carefully should (hopefully) ensure all your
-data is cleaned and standardised, without the hassle of adding lots of
-extra code.</p>
+<p>Filling out the manifest carefully should ensure all your data is
+cleaned and standardised, without the hassle of adding lots of extra
+code.</p>
 </div>
 <div id="further-tweaking-of-the-data-cleaning-code" class="section level3">
 <h3>Further tweaking of the data cleaning code</h3>
