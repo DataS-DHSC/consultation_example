@@ -18,3 +18,7 @@ general_params:
  manifest_file : "manifest.xlsx"
  include_hard_copies: TRUE
  include_easyread: TRUE
+ 
+stop_words: "manual_stop_words.txt"
+stem_word_exceptions: "stemming_exceptions.txt"
+glossary_words: "manual_glossary_words.txt"
