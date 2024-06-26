@@ -1,0 +1,291 @@
+---
+title: "Step 3 - LDA analysis"
+format: 
+  html:
+    number-sections: true
+    anchor-sections: true
+editor: visual
+---
+
+## LDA analysis {.unnumbered}
+
+LDA analysis is a "bag of words" approach assigning individual words to topics and then topics to responses based on the occurrence of these words. While the method is able to automatically fit these distributions it does require the total number of topics to be manually specified. To do this we look at the log-likelihood of the distributions across a range of topic numbers and then select the minimum total number of topics at which point the log-likelihood has been maximised.
+
+Once topics have been created, the topics need to be manually identified with similar topics being merged and undefined "noise" topics flagged. This means that in selecting to total number of topics it is better to go slightly higher to make sure you have captured everything.
+
+Note - this analysis performs pre-processing of the responses and so relies on the configuration performed in *Step 2 - Pre-process Responses*.
+
+### Setup {.unnumbered}
+
+```{r}
+#| output: false
+#| warning: false
+
+if (!requireNamespace("pak")) install.packages("pak", quiet = TRUE)
+
+# need to sort out the below
+pak::pkg_install(
+  c(
+    #DataS-DHSC/DHSCconsultations,
+    "tidyverse",
+    "tidytext", "here", "yaml",
+    "writexl",
+    "DT"
+  )
+)
+
+library(tidyverse)
+
+here::i_am(file.path("R", "03_lda_analysis.qmd"))
+
+devtools::load_all(here::here("..", "DHSCconsultations"))
+
+# read config file
+config <- yaml::read_yaml(
+  here::here("input", "config.yml")
+)
+
+# load in text cleaner
+source(here::here("R", "clean_text.R"))
+
+# load in file tools
+file_tools <- new.env()
+source(here::here("R", "file_tools.R"), local = file_tools)
+
+stem_word_exceptions <- file_tools$read_stem_word_exceptions()
+glossary_words <- file_tools$read_glossary_words()
+stop_words <- file_tools$read_stop_words()
+
+```
+
+## Load responses
+
+Load all your responses into the variable below.
+
+```{r}
+# break Jane Austen books down into 100 chunks to act as responses
+responses <- janeaustenr::austen_books() %>%
+  filter(text != "") %>%
+  group_by(book) %>%
+  mutate(
+    response_id = ntile(n = 100)
+  ) %>%
+  group_by(response_id, book) %>%
+  summarise(text = str_c(text, collapse = " "), .groups = "drop") %>%
+  pivot_wider(names_from = book, values_from = text)
+```
+
+## Select total topic numbers for each question
+
+To select the total number of topics to use for analysing the responses to each question we need run the LDA model across a range of topic numbers. We then look to maximise the log-likelihood of the model fit to determine the total number of topics to assign each question. 
+
+Starting from zero, the log-likelihood of the model will increase as adding more topics increases the probability that the they explain all the responses. The log-likelihood will then plateau across some range of total topic numbers before starting to fall as further increasing the number of topics starts to make it less likely that so many topics explain the provided responses.
+
+A good rule of thumb is to scan across a starting range `seq(10, 80, 10)` for all questions before tailoring the range using a higher resolution scan around the point of initial maximum log-likelihood.
+
+### Number of topics per question - low resolution scan
+
+Perform the low resolution scan of total topic numbers.
+
+Note - this section might need to be repeated if the initial rise to maximum log-likelihood falls outside of the used range.
+
+#### Set initial ranges
+
+```{r}
+topic_number_low_res <- list(
+  "Sense & Sensibility" = seq(10, 80, 10),
+  "Pride & Prejudice" = seq(10, 80, 10),
+  "Mansfield Park" = seq(10, 80, 10),
+  "Emma" = seq(10, 80, 10),
+  "Northanger Abbey" = seq(10, 80, 10),
+  "Persuasion" = seq(10, 80, 10)
+)
+```
+
+#### Run LDA
+
+Run the model across range of total topic numbers provided.
+
+Note - the below can take significant time to complete.
+
+```{r}
+#seed <- config$lda_seed
+seed <- 1984
+
+lda_fits_low_res <- 
+  DHSCconsultations::fit_lda(
+    responses,
+    "response_id",
+    topic_number_low_res,
+    seed,
+    clean_text,
+    glossary_words,
+    stop_words,
+    stem_word_exceptions
+  )
+```
+
+#### Check model convergence
+
+The LDA implementation uses Gibbs sampling to calculate the distribution of words to topics and topics to responses. This means that sufficient iterations of the model need to be made to ensure that it has reached its stationary state and so the log-likelihood stabilised to a particular value. The graphs show the log-likelihood across sequential iterations as well as a black line representing the calculated mean log-likelihood. If the model has not settled to a single log-likelihood or there is a significant difference between the final value of the log-likelihood and the mean then you will need to re-run the model using a greater burn-in period and/or number of iterations.
+
+```{r}
+lda_fits_low_res %>%
+  DHSCconsultations::view_lda_fit_convergence()
+```
+
+#### Identify smaller range
+
+The below generates graphs for the log-likelihood across the different total number of topics for each question. Using these, it is a good idea to refine your range to make sure you are looking at a higher resolution around the initial maximum.
+
+```{r}
+lda_fits_low_res %>%
+  DHSCconsultations::view_lda_fit_loglikelihood()
+```
+
+#### Save output
+
+```{r}
+lda_fits_low_res %>%
+  DHSCconsultations::write_lda_fit(
+    here::here(
+      config$general_params$output_dir,
+      "lda_fit"
+    ), 
+    prefix = "low_res"
+  )
+```
+
+### Number of topics per question - high resolution
+
+Perform the high resolution scan of total topic numbers.
+
+#### Set high resolution ranges
+
+```{r}
+topic_number_high_res <- list(
+  "Sense & Sensibility" = seq(10, 30, 2),
+  "Pride & Prejudice" = seq(10, 30, 2),
+  "Mansfield Park" = seq(10, 30, 2),
+  "Emma" = seq(10, 30, 2),
+  "Northanger Abbey" = seq(10, 30, 2),
+  "Persuasion" = seq(10, 30, 2)
+)
+```
+
+#### Run LDA
+
+Run the model across range of total topic numbers provided.
+
+Note - the below can take significant time to complete.
+
+```{r}
+#seed <- config$lda_seed
+seed <- 1984
+
+lda_fits_high_res <- 
+  DHSCconsultations::fit_lda(
+    responses,
+    "response_id",
+    topic_number_high_res,
+    seed,
+    clean_text,
+    glossary_words,
+    stop_words,
+    stem_word_exceptions
+  )
+```
+
+#### Check model convergence
+
+Check convergence at higher resolution.
+
+```{r}
+lda_fits_high_res %>%
+  DHSCconsultations::view_lda_fit_convergence()
+```
+
+#### Identify topic number
+
+The below generates graphs for the log-likelihood across the different total number of topics for each question. Using these, look for the smallest total topic number that achieves maximum log-likelihood.
+
+Note - it is a good idea to err on the side of more topics as these will be manually checked to remove duplicates.
+
+```{r}
+lda_fits_high_res %>%
+  DHSCconsultations::view_lda_fit_loglikelihood()
+```
+
+#### Save output
+
+```{r}
+lda_fits_high_res %>%
+  DHSCconsultations::write_lda_fit(
+    here::here(
+      config$general_params$output_dir,
+      "lda_fit"
+    ), 
+    prefix = "high_res"
+  )
+```
+
+## Final model
+
+Based on the above fits select the final number of topics for each questions and run the LDA.
+
+### Number of topics
+
+```{r}
+topic_number <- list(
+  "Sense & Sensibility" = 18,
+  "Pride & Prejudice" = 22,
+  "Mansfield Park" = 22,
+  "Emma" = 24,
+  "Northanger Abbey" = 14,
+  "Persuasion" = 16
+)
+```
+
+### Run LDA
+
+Run the model across range of total topic numbers provided.
+
+Note - the below can take significant time to complete.
+
+```{r}
+#seed <- config$lda_seed
+seed <- 1984
+
+lda_final <- 
+  DHSCconsultations::run_lda(
+    responses,
+    "response_id",
+    topic_number,
+    seed,
+    clean_text,
+    glossary_words,
+    stop_words,
+    stem_word_exceptions
+  )
+```
+
+### Check model convergence
+
+Check convergence of final fit.
+
+```{r}
+lda_final %>%
+  DHSCconsultations::view_lda_convergence()
+```
+
+### Save output
+
+```{r}
+lda_final %>%
+  DHSCconsultations::write_lda(
+    here::here(
+      config$general_params$output_dir,
+      "lda"
+    )
+  )
+```

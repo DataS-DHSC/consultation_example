@@ -1,0 +1,277 @@
+---
+title: "Step 2 - Pre-process Responses"
+format: 
+  html:
+    number-sections: true
+    anchor-sections: true
+editor: visual
+---
+
+## Pre-process Responses {.unnumbered}
+
+LDA analysis is a "bag of words" approach assigning individual words to topics and then topics to responses based on the occurrence of these words.
+
+Prior to running the LDA model you need to make sure that:
+
+1.  Your text has been cleaned of bad characters and acronyms
+2.  Produce a glossary to convert multiple word terms to single words e.g. "National Health Service" \> "NationalHealthService"
+3.  Update stop word exclusions to remove any common words that aren't important e.g. miss
+4.  Check stemming exclusions to make sure informative words aren't being mistakenly stemmed e.g. nhs \> nh
+
+### Setup {.unnumbered}
+
+```{r}
+#| output: false
+#| warning: false
+
+
+if (!requireNamespace("pak")) install.packages("pak", quiet = TRUE)
+
+# need to sort out the below
+pak::pkg_install(
+  c(
+    #DataS-DHSC/DHSCconsultations,
+    "tidyverse",
+    "tidytext", "here", "yaml",
+    "writexl",
+    "DT"
+  )
+)
+
+library(tidyverse)
+
+here::i_am(file.path("R", "02_pre-process_responses.qmd"))
+
+devtools::load_all(here::here("..", "DHSCconsultations"))
+
+# read config file
+config <- yaml::read_yaml(
+  here::here("input", "config.yml")
+)
+
+# load in file tools
+file_tools <- new.env()
+source(here::here("R", "file_tools.R"), local = file_tools)
+
+```
+
+## Load responses
+
+Load all your responses into the variable below.
+
+```{r}
+# break Jane Austen books down into 100 chunks to act as responses
+responses <- janeaustenr::austen_books() %>%
+  filter(text != "") %>%
+  group_by(book) %>%
+  mutate(
+    response_id = ntile(n = 100)
+  ) %>%
+  group_by(response_id, book) %>%
+  summarise(text = str_c(text, collapse = " "), .groups = "drop") %>%
+  pivot_wider(names_from = book, values_from = text)
+```
+
+## Clean special characters and acronyms
+
+To clean special characters and acronyms we use a custom function `clean_text` which can be found in the script `file.path("R", "clean_text.R")` . This function takes two arguments: `txt` the text to clean (can be a character vector), and `squish` a logical value that determines if additional white space should be removed (defaults to `TRUE`).
+
+### Build your cleaning function
+
+To customise the `clean_text` function to your responses run the below code chunk to produce a summary of all the replacements being performed. It you seen any special characters of acronyms that need replacing edit the `clean_text` function then run the below code chunk again. Keep repeating this process until you are happy that you have correctly dealt with all special characters and acronyms.
+
+Note - that here we use `squish = FALSE` as we want to see if characters are removed or replaced by white space.
+
+```{r}
+source(here::here("R", "clean_text.R"))
+
+text_clean_summary <- 
+  DHSCconsultations::summarise_text_cleaner(
+    responses, 
+    \(x) clean_text(x, squish = FALSE),
+    col_id = "response_id"
+  )
+
+text_clean_summary %>%
+  DT::datatable()
+```
+
+Write the summary to file.
+
+```{r}
+#| eval: false
+text_clean_summary %>%
+  writexl::write_xlsx(
+    here::here(
+      config$general_params$output_dir,
+      sprintf("character_replacements.xlsx")
+    )
+  )
+```
+
+## Glossary: Convert multi-word terms to single words
+
+As LDA breaks text into individual words, it is necessary to convert multi-word terms into single words for them to be considered by the analysis e.g. "National Health Service" will be considered as three separate words and potentially loose their significance whereas "nhs" or "NationalHealthService" will be considered as a single term.
+
+Note - this, and subsequent sections, depend on the response text being cleaned using the final version of the `clean_text` function configured above.
+
+### Produce raw n-grams
+
+The below code chunk will produce counts of all bi-grams and tri-grams in the text where at least 2 of the words are not in the default stop word list (`tidytext::stop_words`) and display a plot of these for each question.
+
+```{r}
+source(here::here("R", "clean_text.R"))
+
+raw_ngram_summary <- 
+  DHSCconsultations::summarise_ngrams(
+    responses, 
+    clean_text,
+    col_id = "response_id"
+  ) %>%
+  DHSCconsultations::plot_ngram_summary()
+
+```
+
+The below saves all n-gram counts to an output directory. The folder will contain spreadsheets with tables of all n-gram counts (above display gives top 30) for each question.
+
+```{r}
+#| eval: false
+#| output: false
+raw_ngram_summary %>%
+  DHSCconsultations::write_ngram_summary(
+    here::here(
+      config$general_params$output_dir,
+      "raw_ngrams"
+    )
+  )
+```
+
+### Configure glossary
+
+Load in all the glossary terms from the input *manual_glossary_words.txt* file and re-run n-gram summary plots. Re-run the below chunk while updating the file until you are happy with the result.
+
+Note - by default the glossary also includes all multiple word terms from [think local act personal jargon buster](https://www.thinklocalactpersonal.org.uk/Browse/Informationandadvice/CareandSupportJargonBuster/). This can be changed by using `read_glossary_words(include_defaults = FALSE)`
+
+```{r}
+source(here::here("R", "clean_text.R"))
+
+ngram_summary <- 
+  DHSCconsultations::summarise_ngrams(
+    responses, 
+    clean_text,
+    glossary_words = file_tools$read_glossary_words(),
+    col_id = "response_id"
+  ) %>%
+  DHSCconsultations::plot_ngram_summary()
+```
+
+If you are happy with your glossary, save to the output folder for audit purposes.
+
+```{r}
+#| eval: false
+file_tools$copy_glossary_words()
+```
+
+## Update stop words
+
+When assigning words to topics we only want to consider words that are significant. To exclude common words we use a stop word list to filter text prior to analysis.
+
+Note - this, and subsequent sections, depend on the response text being cleaned using the final version of the `clean_text` function and the glossary file configured above.
+
+### Produce raw word counts
+
+The below code chunk will produce counts of all raw words in the text and display a plot of these for each question.
+
+Note - this does not use the glossary or `clean_text` function, but does remove special characters and punctuation (i.e. uses the regex `[^0-9a-zA-Z'\\s]`).
+
+```{r}
+raw_word_summary <- 
+  DHSCconsultations::summarise_raw_words(
+    responses,
+    col_id = "response_id"
+  ) %>%
+  DHSCconsultations::plot_raw_word_summary()
+```
+
+The below saves all word counts to an output directory. The folder will contain a spreadsheet with tables of all words (above display gives top 30) for each question.
+
+```{r}
+#| eval: false
+#| output: false
+raw_word_summary %>%
+  DHSCconsultations::write_raw_word_summary(
+    here::here(
+      config$general_params$output_dir,
+      "raw_words"
+    )
+  )
+```
+
+### Configure stop words
+
+Load in all stop words from the input *manual_stop_words.txt* file and re-run stop word summary plots. Re-run the below chunk while updating the file until you are happy with the result.
+
+Note - By default the code includes the stop word list `tidytext::stop_words`. This can be changed by using `read_stop_words(include_defaults = FALSE)`.
+
+```{r}
+source(here::here("R", "clean_text.R"))
+
+word_summary <- 
+  DHSCconsultations::summarise_words(
+    responses, 
+    clean_text,
+    glossary_words = file_tools$read_glossary_words(),
+    stop_words = file_tools$read_stop_words(),
+    col_id = "response_id"
+  ) %>%
+  DHSCconsultations::plot_word_summary()  
+```
+
+If you are happy with your stop words, save to the output folder for audit purposes.
+
+```{r}
+#| eval: false
+file_tools$copy_stop_words()
+```
+
+## Update stemming exceptions
+
+When looking at word frequencies we need to make sure that words with the same meaning but different suffixes are grouped together - known as stemming. This process can cause problems with uncommon words or acronyms being stemmed e.g. nhs becoming nh.
+
+Note - this section depends on the response text being cleaned using the final version of the `clean_text` function, the glossary file, and the stop word list configured above.
+
+### Configure stemming exceptions
+
+Load in all stemming exceptions from the input *stemming_exceptions.txt* file and run stemming summary. Re-run the below chunk while updating the file until you are happy with the result.
+
+```{r}
+source(here::here("R", "clean_text.R"))
+
+stemming_summary <- 
+  DHSCconsultations::summarise_stemming(
+    responses, 
+    clean_text,
+    stem_word_exceptions = file_tools$read_stem_word_exceptions(),
+    glossary_words = file_tools$read_glossary_words(),
+    stop_words = file_tools$read_stop_words(),
+    col_id = "response_id"
+  )
+
+stemming_summary %>%
+  DT::datatable()
+```
+
+If you are happy with your stemming exceptions, save to the output folder for audit purposes.
+
+```{r}
+#| eval: false
+file_tools$copy_stem_word_exceptions()
+
+stemming_summary %>%
+  writexl::write_xlsx(
+    here::here(
+      config$general_params$output_dir,
+      sprintf("stemmed_words.xlsx")
+    )
+  )
+```
