@@ -9,7 +9,7 @@ editor: visual
 
 ## Pre-process Responses {.unnumbered}
 
-LDA analysis is a "bag of words" approach assigning individual words to topics and then topics to responses based on the occurrence of these words.
+LDA analysis is a "bag of words" approach, assigning individual words to topics and then topics to responses based on the occurrence of these words.
 
 Prior to running the LDA model you need to make sure that:
 
@@ -25,10 +25,10 @@ Prior to running the LDA model you need to make sure that:
 #| warning: false
 
 
-if (!requireNamespace("pak")) install.packages("pak", quiet = TRUE)
+if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
 
 # need to sort out the below
-pak::pkg_install(
+librarian::stock(
   c(
     #DataS-DHSC/DHSCconsultations,
     "tidyverse",
@@ -74,11 +74,11 @@ responses <- janeaustenr::austen_books() %>%
 
 ## Clean special characters and acronyms
 
-To clean special characters and acronyms we use a custom function `clean_text` which can be found in the script `file.path("R", "clean_text.R")` . This function takes two arguments: `txt` the text to clean (can be a character vector), and `squish` a logical value that determines if additional white space should be removed (defaults to `TRUE`).
+To clean special characters and acronyms we use a custom function `clean_text` which can be found in the script `file.path("R", "clean_text.R")` . This function takes two arguments: `txt`, the text to clean (can be a character vector); and `squish`, a logical value that determines if additional white space should be removed (defaults to `TRUE`).
 
 ### Build your cleaning function
 
-To customise the `clean_text` function to your responses run the below code chunk to produce a summary of all the replacements being performed. It you seen any special characters of acronyms that need replacing edit the `clean_text` function then run the below code chunk again. Keep repeating this process until you are happy that you have correctly dealt with all special characters and acronyms.
+To customise the `clean_text` function run the below code chunk to produce a summary of all the replacements being performed. If any further special characters or acronyms need replacing edit the `clean_text` function then re-run the below code chunk. Keep repeating this process until you are happy that you have correctly dealt with all special characters and acronyms in the responses.
 
 Note - that here we use `squish = FALSE` as we want to see if characters are removed or replaced by white space.
 
@@ -132,7 +132,9 @@ raw_ngram_summary <-
 
 ```
 
-The below saves all n-gram counts to an output directory. The folder will contain spreadsheets with tables of all n-gram counts (above display gives top 30) for each question.
+#### Save to output folder
+
+The below saves all n-gram count plots to an output directory as well as a spreadsheets with tables of all n-gram counts (above display gives top 30) for each question.
 
 ```{r}
 #| eval: false
@@ -148,7 +150,7 @@ raw_ngram_summary %>%
 
 ### Configure glossary
 
-Load in all the glossary terms from the input *manual_glossary_words.txt* file and re-run n-gram summary plots. Re-run the below chunk while updating the file until you are happy with the result.
+Load in all the glossary terms from the `file.path("input", "manual_glossary_words.txt")` file and generate n-gram summary plots. Update the input file and re-run the below chunk until you are happy that all relevant multi-word terms have been encoded as single words.
 
 Note - by default the glossary also includes all multiple word terms from [think local act personal jargon buster](https://www.thinklocalactpersonal.org.uk/Browse/Informationandadvice/CareandSupportJargonBuster/). This can be changed by using `read_glossary_words(include_defaults = FALSE)`
 
@@ -165,7 +167,7 @@ ngram_summary <-
   DHSCconsultations::plot_ngram_summary()
 ```
 
-If you are happy with your glossary, save to the output folder for audit purposes.
+#### Save to output folder
 
 ```{r}
 #| eval: false
@@ -174,7 +176,7 @@ file_tools$copy_glossary_words()
 
 ## Update stop words
 
-When assigning words to topics we only want to consider words that are significant. To exclude common words we use a stop word list to filter text prior to analysis.
+When assigning words to topics we only want to consider words that might be significant to a particular topic. To exclude common words we use a stop word list to filter text prior to analysis.
 
 Note - this, and subsequent sections, depend on the response text being cleaned using the final version of the `clean_text` function and the glossary file configured above.
 
@@ -193,7 +195,9 @@ raw_word_summary <-
   DHSCconsultations::plot_raw_word_summary()
 ```
 
-The below saves all word counts to an output directory. The folder will contain a spreadsheet with tables of all words (above display gives top 30) for each question.
+#### Save to output folder
+
+The below saves all raw word counts to an output directory as well as a spreadsheet with tables of all raw words (above display gives top 30) for each question.
 
 ```{r}
 #| eval: false
@@ -209,7 +213,7 @@ raw_word_summary %>%
 
 ### Configure stop words
 
-Load in all stop words from the input *manual_stop_words.txt* file and re-run stop word summary plots. Re-run the below chunk while updating the file until you are happy with the result.
+Load in all stop words from the `file.path("input", "manual_stop_words.txt")` file and generate stop word summary plots. Update the input file and re-run the below chunk until you are happy that all stop words have been excluded.
 
 Note - By default the code includes the stop word list `tidytext::stop_words`. This can be changed by using `read_stop_words(include_defaults = FALSE)`.
 
@@ -227,7 +231,7 @@ word_summary <-
   DHSCconsultations::plot_word_summary()  
 ```
 
-If you are happy with your stop words, save to the output folder for audit purposes.
+#### Save to output folder
 
 ```{r}
 #| eval: false
@@ -236,13 +240,13 @@ file_tools$copy_stop_words()
 
 ## Update stemming exceptions
 
-When looking at word frequencies we need to make sure that words with the same meaning but different suffixes are grouped together - known as stemming. This process can cause problems with uncommon words or acronyms being stemmed e.g. nhs becoming nh.
+When looking at word frequencies we need to make sure that words with the same meaning but different suffixes are grouped together - known as stemming. This process can cause problems with uncommon words or acronyms being incorrectly stemmed e.g. nhs becoming nh.
 
 Note - this section depends on the response text being cleaned using the final version of the `clean_text` function, the glossary file, and the stop word list configured above.
 
 ### Configure stemming exceptions
 
-Load in all stemming exceptions from the input *stemming_exceptions.txt* file and run stemming summary. Re-run the below chunk while updating the file until you are happy with the result.
+Load in all stemming exceptions from the `file.path("input", "input stemming_exceptions.txt")` file and generate stemming summary. Update the input file and re-run the below chunk until you are happy that no words have been incorrectly stemmed.
 
 ```{r}
 source(here::here("R", "clean_text.R"))
@@ -261,7 +265,7 @@ stemming_summary %>%
   DT::datatable()
 ```
 
-If you are happy with your stemming exceptions, save to the output folder for audit purposes.
+#### Save to output folder
 
 ```{r}
 #| eval: false
@@ -275,3 +279,7 @@ stemming_summary %>%
     )
   )
 ```
+
+## Next steps
+
+Once you have configured all the above pre-processing you can apply the LDA model.
