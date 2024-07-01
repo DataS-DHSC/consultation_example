@@ -30,19 +30,24 @@ if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
 # need to sort out the below
 librarian::stock(
   c(
-    #DataS-DHSC/DHSCconsultations,
     "tidyverse",
     "tidytext", "here", "yaml",
     "writexl",
-    "DT"
+    "DT",
+    "credentials"
+  )
+)
+
+credentials::set_github_pat()
+librarian::stock(
+  c(
+    "DataS-DHSC/DHSCconsultations"
   )
 )
 
 library(tidyverse)
 
 here::i_am(file.path("R", "02_pre-process_responses.qmd"))
-
-devtools::load_all(here::here("..", "DHSCconsultations"))
 
 # read config file
 config <- yaml::read_yaml(

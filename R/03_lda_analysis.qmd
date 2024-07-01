@@ -26,11 +26,18 @@ if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
 # need to sort out the below
 librarian::stock(
   c(
-    #DataS-DHSC/DHSCconsultations,
     "tidyverse",
     "tidytext", "here", "yaml",
     "writexl",
-    "DT"
+    "DT",
+    "credentials"
+  )
+)
+
+credentials::set_github_pat()
+librarian::stock(
+  c(
+    "DataS-DHSC/DHSCconsultations"
   )
 )
 
@@ -56,6 +63,7 @@ stem_word_exceptions <- file_tools$read_stem_word_exceptions()
 glossary_words <- file_tools$read_glossary_words()
 stop_words <- file_tools$read_stop_words()
 
+lda_seed <- 1984
 ```
 
 ## Load responses
@@ -109,15 +117,12 @@ Run the model across the low resolution range of topic numbers provided above.
 Note - the below can take significant time to complete for a large number of responses.
 
 ```{r}
-#seed <- config$lda_seed
-seed <- 1984
-
 lda_fits_low_res <- 
   DHSCconsultations::fit_lda(
     responses,
     "response_id",
     topic_number_low_res,
-    seed,
+    lda_seed,
     clean_text,
     glossary_words,
     stop_words,
@@ -182,15 +187,12 @@ Run the model across the low resolution range of topic numbers provided above.
 Note - the below can take significant time to complete for a large number of responses.
 
 ```{r}
-#seed <- config$lda_seed
-seed <- 1984
-
 lda_fits_high_res <- 
   DHSCconsultations::fit_lda(
     responses,
     "response_id",
     topic_number_high_res,
-    seed,
+    lda_seed,
     clean_text,
     glossary_words,
     stop_words,
@@ -255,15 +257,12 @@ Run the model across topic numbers provided above.
 Note - the below can take significant time to complete.
 
 ```{r}
-#seed <- config$lda_seed
-seed <- 1984
-
 lda_final <- 
   DHSCconsultations::run_lda(
     responses,
     "response_id",
     topic_number,
-    seed,
+    lda_seed,
     clean_text,
     glossary_words,
     stop_words,
