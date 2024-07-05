@@ -45,8 +45,6 @@ library(tidyverse)
 
 here::i_am(file.path("R", "03_lda_analysis.qmd"))
 
-devtools::load_all(here::here("..", "DHSCconsultations"))
-
 # read config file
 config <- yaml::read_yaml(
   here::here("input", "config.yml")
@@ -71,16 +69,18 @@ lda_seed <- 1984
 Load all your responses into the variable below.
 
 ```{r}
-# break Jane Austen books down into 100 chunks to act as responses
-responses <- janeaustenr::austen_books() %>%
-  filter(text != "") %>%
-  group_by(book) %>%
-  mutate(
-    response_id = ntile(n = 100)
-  ) %>%
-  group_by(response_id, book) %>%
-  summarise(text = str_c(text, collapse = " "), .groups = "drop") %>%
-  pivot_wider(names_from = book, values_from = text)
+responses <- DHSCconsultations::dummy_response
+
+responses_lda <- responses %>%
+  select(
+    all_of(
+      c(
+        "response_id",
+        "Please share your views on policy 1",
+        "Please share your views on policy 2"
+      )
+    )
+  )
 ```
 
 ## Select topic numbers for each question
@@ -101,12 +101,8 @@ Note - this section might need to be repeated if the initial rise to maximum log
 
 ```{r}
 topic_number_low_res <- list(
-  "Sense & Sensibility" = seq(10, 80, 10),
-  "Pride & Prejudice" = seq(10, 80, 10),
-  "Mansfield Park" = seq(10, 80, 10),
-  "Emma" = seq(10, 80, 10),
-  "Northanger Abbey" = seq(10, 80, 10),
-  "Persuasion" = seq(10, 80, 10)
+  "Please share your views on policy 1" = seq(10, 80, 10),
+  "Please share your views on policy 2" = seq(10, 80, 10)
 )
 ```
 
@@ -117,9 +113,8 @@ Run the model across the low resolution range of topic numbers provided above.
 Note - the below can take significant time to complete for a large number of responses.
 
 ```{r}
-lda_fits_low_res <- 
+lda_fits_low_res <- responses_lda %>%
   DHSCconsultations::fit_lda(
-    responses,
     "response_id",
     topic_number_low_res,
     lda_seed,
@@ -171,12 +166,8 @@ These ranges have been picked as they cover the points on either side of the ini
 
 ```{r}
 topic_number_high_res <- list(
-  "Sense & Sensibility" = seq(10, 30, 2),
-  "Pride & Prejudice" = seq(10, 30, 2),
-  "Mansfield Park" = seq(10, 30, 2),
-  "Emma" = seq(10, 30, 2),
-  "Northanger Abbey" = seq(10, 30, 2),
-  "Persuasion" = seq(10, 30, 2)
+  "Please share your views on policy 1" = seq(10, 30, 2),
+  "Please share your views on policy 2" = seq(10, 30, 2)
 )
 ```
 
@@ -187,9 +178,8 @@ Run the model across the low resolution range of topic numbers provided above.
 Note - the below can take significant time to complete for a large number of responses.
 
 ```{r}
-lda_fits_high_res <- 
+lda_fits_high_res <- responses_lda %>%
   DHSCconsultations::fit_lda(
-    responses,
     "response_id",
     topic_number_high_res,
     lda_seed,
@@ -241,12 +231,8 @@ Based on the above fits select the final number of topics for each questions and
 
 ```{r}
 topic_number <- list(
-  "Sense & Sensibility" = 18,
-  "Pride & Prejudice" = 22,
-  "Mansfield Park" = 22,
-  "Emma" = 24,
-  "Northanger Abbey" = 14,
-  "Persuasion" = 16
+  "Please share your views on policy 1" = 22,
+  "Please share your views on policy 2" = 24
 )
 ```
 
@@ -257,9 +243,8 @@ Run the model across topic numbers provided above.
 Note - the below can take significant time to complete.
 
 ```{r}
-lda_final <- 
+lda_final <- responses_lda %>%
   DHSCconsultations::run_lda(
-    responses,
     "response_id",
     topic_number,
     lda_seed,

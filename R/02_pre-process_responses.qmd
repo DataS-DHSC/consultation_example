@@ -65,16 +65,17 @@ source(here::here("R", "file_tools.R"), local = file_tools)
 Load all your responses into the variable below.
 
 ```{r}
-# break Jane Austen books down into 100 chunks to act as responses
-responses <- janeaustenr::austen_books() %>%
-  filter(text != "") %>%
-  group_by(book) %>%
-  mutate(
-    response_id = ntile(n = 100)
-  ) %>%
-  group_by(response_id, book) %>%
-  summarise(text = str_c(text, collapse = " "), .groups = "drop") %>%
-  pivot_wider(names_from = book, values_from = text)
+responses <- DHSCconsultations::dummy_response
+
+responses_free_text <- responses %>%
+  select(
+    all_of(
+      c(
+        "Please share your views on policy 1",
+        "Please share your views on policy 2"
+      )
+    )
+  )
 ```
 
 ## Clean special characters and acronyms
@@ -90,11 +91,9 @@ Note - that here we use `squish = FALSE` as we want to see if characters are rem
 ```{r}
 source(here::here("R", "clean_text.R"))
 
-text_clean_summary <- 
+text_clean_summary <- responses_free_text %>%
   DHSCconsultations::summarise_text_cleaner(
-    responses, 
-    \(x) clean_text(x, squish = FALSE),
-    col_id = "response_id"
+    \(x) clean_text(x, squish = FALSE)
   )
 
 text_clean_summary %>%
@@ -127,11 +126,11 @@ The below code chunk will produce counts of all bi-grams and tri-grams in the te
 ```{r}
 source(here::here("R", "clean_text.R"))
 
-raw_ngram_summary <- 
+raw_ngram_summary <- responses_free_text %>%
   DHSCconsultations::summarise_ngrams(
-    responses, 
     clean_text,
-    col_id = "response_id"
+    glossary_words = NULL,
+    stop_words = tidytext::stop_words$word
   ) %>%
   DHSCconsultations::plot_ngram_summary()
 
@@ -162,12 +161,11 @@ Note - by default the glossary also includes all multiple word terms from [think
 ```{r}
 source(here::here("R", "clean_text.R"))
 
-ngram_summary <- 
+ngram_summary <- responses_free_text %>%
   DHSCconsultations::summarise_ngrams(
-    responses, 
     clean_text,
     glossary_words = file_tools$read_glossary_words(),
-    col_id = "response_id"
+    stop_words = tidytext::stop_words$word
   ) %>%
   DHSCconsultations::plot_ngram_summary()
 ```
@@ -192,10 +190,9 @@ The below code chunk will produce counts of all raw words in the text and displa
 Note - this does not use the glossary or `clean_text` function, but does remove special characters and punctuation (i.e. uses the regex `[^0-9a-zA-Z'\\s]`).
 
 ```{r}
-raw_word_summary <- 
+raw_word_summary <- responses_free_text %>%
   DHSCconsultations::summarise_raw_words(
-    responses,
-    col_id = "response_id"
+    glossary_words = NULL
   ) %>%
   DHSCconsultations::plot_raw_word_summary()
 ```
@@ -225,13 +222,11 @@ Note - By default the code includes the stop word list `tidytext::stop_words`. T
 ```{r}
 source(here::here("R", "clean_text.R"))
 
-word_summary <- 
+word_summary <- responses_free_text %>%
   DHSCconsultations::summarise_words(
-    responses, 
     clean_text,
     glossary_words = file_tools$read_glossary_words(),
-    stop_words = file_tools$read_stop_words(),
-    col_id = "response_id"
+    stop_words = file_tools$read_stop_words()
   ) %>%
   DHSCconsultations::plot_word_summary()  
 ```
@@ -256,14 +251,12 @@ Load in all stemming exceptions from the `file.path("input", "input stemming_exc
 ```{r}
 source(here::here("R", "clean_text.R"))
 
-stemming_summary <- 
+stemming_summary <- responses_free_text %>%
   DHSCconsultations::summarise_stemming(
-    responses, 
     clean_text,
     stem_word_exceptions = file_tools$read_stem_word_exceptions(),
     glossary_words = file_tools$read_glossary_words(),
-    stop_words = file_tools$read_stop_words(),
-    col_id = "response_id"
+    stop_words = file_tools$read_stop_words()
   )
 
 stemming_summary %>%
