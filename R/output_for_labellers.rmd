@@ -32,7 +32,7 @@ gamma <- lda_object[[questions_text]][["gamma"]]
 
 ## Most important words by topics
 
-```{r, fig.width = 12, fig.height = 12, warning=FALSE, echo=FALSE, message=FALSE} 
+```{r, fig.width = 12, fig.height = 12, warning=FALSE, echo=FALSE, message=FALSE, results=FALSE} 
 plot <- beta %>% 
   group_by(topic) %>% 
   arrange(-beta) %>% 
@@ -42,8 +42,8 @@ plot <- beta %>%
   ggplot(aes(beta, term)) + 
   geom_bar(stat = "identity", fill = "#006652", alpha = 0.65) + 
   scale_y_reordered() +
-  facet_wrap(~ topic, scales = "free", ncol = 4)
-theme_minimal(base_size = 18)
+  facet_wrap(~ topic, scales = "free", ncol = 4) + 
+  theme_minimal(base_size = 18)
 
 print(plot)
 ```
@@ -85,9 +85,10 @@ print(plot)
 ## Indicative text (Top 5 by topic)
 
 ``` {r, warning=FALSE, echo=FALSE, message=FALSE, results="asis"}
+# Define the current question text
 question_text <- question_text_list[i]
 
-# Filter for responses for said question only
+# Filter for responses to said question only
 responses <- responses_all %>% 
   select(response_id, all_of(question_text)) %>% 
   na.omit()
@@ -95,71 +96,68 @@ responses <- responses_all %>%
 # Get total number of topics to loop through
 no_topics <- gamma %>% pull(topic) %>% max()
 
-# Indicative text - responses for best gamma
+# Function to get top 5 response text for a given topic
 get_topic_text <- function(topic_num){
-  
+  # Filter and sort gamma values for the given topic
   gammas <- gamma %>%
-    filter((`topic` == topic_num)) %>%
+    filter(topic == topic_num) %>%
     arrange(desc(gamma))
   
+  # Get top 5 gamma values
   top_five_gammas <- gammas %>% 
-    slice_head(n = 5) %>% 
-    data.frame() %>% 
-    rename(response_id = 1) %>% 
-    mutate(response_id = as.integer(response_id))
+    slice_head(n = 5) %>%
+    mutate(document = as.integer(document))
   
+  # Load corresponding answers
   answers <- read_csv(
     paste0("../output/output_for_labellers/topic_gamma_q", question_number, ".csv")
   )
   
+  # Join with responses to get the full text
   top_gamma_answers <- top_five_gammas %>% 
-    left_join(responses, by = "response_id") %>% 
-    distinct()
+    left_join(responses, by = c("document" = "response_id")) %>% 
+    select(response_text = all_of(question_text))
   
-  values_list <- list()
-  name <- 1
+  # Clean and return the text
+  values_list <- top_gamma_answers$response_text %>% 
+    str_replace_all("[^[:punct:][:alnum:]\\s]", "")
   
-  for (text in top_gamma_answers[[question_text[topic_num]]]){
-    values_list[[name]] <- str_replace_all(text, "[^[:punct:][:alnum:]\\s]", "")
-    name <- name + 1
-  }
-  return(values_list) 
+  return(values_list)
 }
 
-for (topic_num in c(1:no_topics)){
-  
+# Loop through each topic and print the results
+for (topic_num in 1:no_topics){
   cat("\n## Topic ", topic_num, "\n")
   
-  betas = beta %>%
-    filter((`topic` == topic_num)) %>%
+  # Plot the top 10 words for the topic
+  betas <- beta %>%
+    filter(topic == topic_num) %>%
     arrange(desc(beta))
   
-  top_ten_betas <- betas %>% 
-    slice_head(n = 10) %>% 
-    data.frame()
+  top_ten_betas <- betas %>%
+    slice_head(n = 10)
   
   plot <- top_ten_betas %>%
-    ggplot() +
-    geom_bar(
-      aes(beta, reorder(term, beta)),
-      stat = "identity",
-      fill = "blue",
-      alpha = 0.75
-    ) +
+    ggplot(aes(beta, reorder(term, beta))) +
+    geom_bar(stat = "identity", fill = "blue", alpha = 0.75) +
     labs(
       title = sprintf("Most important words", topic_num),
-      x = "beta",
+      x = "Beta",
       y = ""
     ) +
     theme_minimal(base_size = 14)
   
   print(plot)
   
-  cat("\n      \n")
+  cat("\n\n")
   
-  for (u in seq_along(get_topic_text(topic_num))) {
+  # Fetch and print the top 5 texts for the topic
+  topic_texts <- get_topic_text(topic_num)
+  
+  for (u in seq_along(topic_texts)) {
     cat("\n### ", as.character(u), "\n")
-    cat(get_topic_text(topic_num)[[u]], "\n")
+    cat(topic_texts[u], "\n")
   }
 }
+
 ```
