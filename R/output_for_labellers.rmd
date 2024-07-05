@@ -1,0 +1,165 @@
+---
+title: Consultation (template)
+subtitle: Descriptive plots
+author: Data Science Hub
+date: "`r Sys.Date()`"
+output: 
+  pdf_document: 
+    latex_engine: pdflatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(
+  "tidyverse",
+  "yaml",
+  "tidytext"
+)
+
+config <- yaml::read_yaml("../input/config.yml")
+general_params <- config$general_params
+
+lda_object <- readRDS("../output/lda_object.rds")
+
+questions_text <- names(lda_object)[i]
+
+beta <- lda_object[[questions_text]][["beta"]]
+gamma <- lda_object[[questions_text]][["gamma"]]
+```
+
+## Question: `r question_text`
+
+## Most important words by topics
+
+```{r, fig.width = 12, fig.height = 12, warning=FALSE, echo=FALSE, message=FALSE} 
+plot <- beta %>% 
+  group_by(topic) %>% 
+  arrange(-beta) %>% 
+  slice_head(n = 10) %>% 
+  ungroup() %>% 
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term)) + 
+  geom_bar(stat = "identity", fill = "#006652", alpha = 0.65) + 
+  scale_y_reordered() +
+  facet_wrap(~ topic, scales = "free", ncol = 4)
+theme_minimal(base_size = 18)
+
+print(plot)
+```
+
+## Topics per response
+
+``` {r, fig.width = 12, fig.height = 7, warning=FALSE, echo=FALSE, message=FALSE}
+
+# Calculate gamma threshold to leave all responses with at least one topic.
+gamma_threshold <- gamma %>%
+  summarise(max_gamma = max(gamma), .by = document) %>%
+  slice_min(max_gamma, n = 1) %>%
+  pull(max_gamma) %>%
+  max()
+
+# Filter out topic-document assignments with gamma lower than threshold
+gamma_filtered <- gamma %>% 
+  filter(gamma >= gamma_threshold) %>% 
+  count(document) %>% 
+  mutate(n = ifelse(n > 15, 15, n)) %>% 
+  group_by(n) %>% 
+  summarise(count = sum(n))
+
+plot <- gamma_filtered %>% 
+  ggplot(aes(n, count)) +
+  geom_col(fill = "#006652", alpha = 0.65) +
+  scale_y_continuous(expand = c(0, 0)) + 
+  theme_minimal(base_size = 18) +
+  theme() + 
+  labs(
+    title = "Topics per response",
+    x = "Number of topics",
+    y = "Number of responses"
+  )
+
+print(plot)
+```
+
+## Indicative text (Top 5 by topic)
+
+``` {r, warning=FALSE, echo=FALSE, message=FALSE, results="asis"}
+question_text <- question_text_list[i]
+
+# Filter for responses for said question only
+responses <- responses_all %>% 
+  select(response_id, all_of(question_text)) %>% 
+  na.omit()
+
+# Get total number of topics to loop through
+no_topics <- gamma %>% pull(topic) %>% max()
+
+# Indicative text - responses for best gamma
+get_topic_text <- function(topic_num){
+  
+  gammas <- gamma %>%
+    filter((`topic` == topic_num)) %>%
+    arrange(desc(gamma))
+  
+  top_five_gammas <- gammas %>% 
+    slice_head(n = 5) %>% 
+    data.frame() %>% 
+    rename(response_id = 1) %>% 
+    mutate(response_id = as.integer(response_id))
+  
+  answers <- read_csv(
+    paste0("../output/output_for_labellers/topic_gamma_q", question_number, ".csv")
+  )
+  
+  top_gamma_answers <- top_five_gammas %>% 
+    left_join(responses, by = "response_id") %>% 
+    distinct()
+  
+  values_list <- list()
+  name <- 1
+  
+  for (text in top_gamma_answers[[question_text[topic_num]]]){
+    values_list[[name]] <- str_replace_all(text, "[^[:punct:][:alnum:]\\s]", "")
+    name <- name + 1
+  }
+  return(values_list) 
+}
+
+for (topic_num in c(1:no_topics)){
+  
+  cat("\n## Topic ", topic_num, "\n")
+  
+  betas = beta %>%
+    filter((`topic` == topic_num)) %>%
+    arrange(desc(beta))
+  
+  top_ten_betas <- betas %>% 
+    slice_head(n = 10) %>% 
+    data.frame()
+  
+  plot <- top_ten_betas %>%
+    ggplot() +
+    geom_bar(
+      aes(beta, reorder(term, beta)),
+      stat = "identity",
+      fill = "blue",
+      alpha = 0.75
+    ) +
+    labs(
+      title = sprintf("Most important words", topic_num),
+      x = "beta",
+      y = ""
+    ) +
+    theme_minimal(base_size = 14)
+  
+  print(plot)
+  
+  cat("\n      \n")
+  
+  for (u in seq_along(get_topic_text(topic_num))) {
+    cat("\n### ", as.character(u), "\n")
+    cat(get_topic_text(topic_num)[[u]], "\n")
+  }
+}
+```
