@@ -67,9 +67,12 @@ copy_stem_word_exceptions <- function() {
 }
 
 .copy_consultation_file <- function(...) {
-  file.copy(
+  res <- file.copy(
     file.path(config$general_params$input_dir, ...),
     file.path(config$general_params$output_dir, ...),
-    overwrite = TRUE
+    overwrite = TRUE,
+    showWarnings = TRUE
   )
+  
+  return(invisible(res))
 }
