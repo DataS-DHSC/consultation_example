@@ -1,0 +1,316 @@
+---
+title: "Step 1 - Load and clean data"
+format: 
+  html:
+    number-sections: true
+    anchor-sections: true
+editor: visual
+---
+
+## Introduction
+
+A common issue with the analysis of consultation responses is standardising data from several different sources of data. Often these are given as standard data (we will call this "main"), the easy read counterpart, the hard copies for both of these respectively.
+
+The data cleaning problem arises due to the questions and possible responses to some questions being different between the data sources. For example\...
+
+-   Main question: To what extent do you agree with \[thing A\]?
+
+    -   Possible responses: Strongly agree, Agree, Disagree, Strongly disagree, NA
+
+-   Corresponding easy read question: How much do you agree or disagree with \[thing A\]?
+
+    -   Possible responses: Definitely agree, Agree, Disagree, Definitely disagree, NA
+
+If you have no easyread data, skip to "**Final tweaks to config and source data file names**"
+
+### Guide to making a manifest file
+
+The manifest is an excel spreadsheet that you fill out to give enough information to the code to standardise the data into one tidy table.
+
+The first sheet in [manifest.xlsx](https://github.com/DataS-DHSC/consultation_example/blob/main/input/manifest/manifest.xlsx) should contain the following:
+
+| Column          | Description                                                                               |
+|----------------|--------------------------------------------------------|
+| `question`      | The exact column headers in your main data file.                                          |
+| `type`          | The type of data entered into each (multi-choice, long text, etc).                        |
+| `col_id`        | The column number, starting at one from the left side.                                    |
+| `question_easy` | The same as `question`, but for easy read data.                                           |
+| `type_easy`     | The same as `type`, but for easy read data.                                               |
+| `col_id_easy`   | The same as `col_id`, but for easy read data.                                             |
+| `assumed_easy`  | Assumed responses to give to missing columns in the easy read data.                       |
+| `omit`          | Irrelevant columns to delete. This should contain only TRUE or FALSE.                     |
+| `custom_map`    | The name of the sheet in manifest.xlsx with the custom mappings for certain questions(s). |
+
+For all other columns that have different data that can be mapped from easy read to main, fill in said mappings in a new sheet called map, followed by a digit that corresponds to the col_id of the main question.
+
+If your data has any common answer type that is used more than once in your data (yes/no, likert, etc.), instead of a digit, just use a custom name such as "map_yesno" or "map_likert" as used in the example.
+
+The example manifest file contains map_yesno, map_likert, map2, map4, and map6 relating to the eight questions that need standardising between main and easy read versions of the data.
+
+In each of these sheets, give the mappings for main, easy read, then the final mappings that everything should be set to.
+
+For example, the map_likert sheet may look something like this\...
+
+| main              | easy                | final             |
+|-------------------|---------------------|-------------------|
+| Strongly agree    | Definitely agree    | Strongly agree    |
+| Agree             | Agree               | Agree             |
+| Disagree          | Disagree            | Disagree          |
+| Strongly disagree | Definitely disagree | Strongly disagree |
+| NA                | NA                  | NA                |
+
+\...and the one of the map sheets may look something like this:
+
+| main                     | easy                     | final                    |
+|------------------------|------------------------|------------------------|
+| East Midlands            | East Midlands            | East Midlands            |
+| East of England          | East of England          | East of England          |
+| London                   | London                   | London                   |
+| North East England       | North                    | North                    |
+| North West England       | North                    | North                    |
+| South East England       | South                    | South                    |
+| South West England       | South                    | South                    |
+| West Midlands            | West Midlands            | West Midlands            |
+| Yorkshire and the Humber | Yorkshire and the Humber | Yorkshire and the Humber |
+| Prefer not to say        | I do not want to say     | Prefer not to say        |
+| NA                       | NA                       | NA                       |
+
+Filling out the manifest carefully should ensure all your data is cleaned and standardised, without the hassle of adding lots of extra code.
+
+### Final tweaks to config and source data file names
+
+Now you've made the manifest file, you may find there are a few more steps required before running code.
+
+**Firstly, you'll need to add some metadata to [config.yml](https://github.com/DataS-DHSC/consultation_example/blob/main).**
+
+| general_params      | Description                                           |
+|--------------------|---------------------------------------------------|
+| date_main           | The closing date of the main consultation.            |
+| date_easy           | The closing date of the easy read consultation.       |
+| input_dir           | Directory or path (leave as is).                      |
+| output_dir          | Directory or path (leave as is).                      |
+| responses_dir       | Directory or path (leave as is).                      |
+| manifest_dir        | Directory or path (leave as is).                      |
+| output_frequency    | Directory or path (leave as is).                      |
+| qa_file_dir         | Directory or path (leave as is).                      |
+| responses_prefix    | Directory or path (leave as is).                      |
+| main_suffix         | Directory or path (leave as is).                      |
+| easy_suffix         | Directory or path (leave as is).                      |
+| hard_copies_flag    | Directory or path (leave as is).                      |
+| manifest_file       | Directory or path (leave as is).                      |
+| include_hard_copies | Do you have hard copies to add (emails, postal, etc)? |
+| include_easyread    | Do you have easy read data to add?                    |
+
+**Secondly, you need to make sure your data files are named as expected.**
+
+You may have noticed the config has given paths, directories, and parts of filenames. You need to make sure your data are named to fit these. This example shows the main data, the easy read, the hard copies for both of these respectively. These are put into the [responses](https://github.com/DataS-DHSC/consultation_example/tree/main/input/responses) folder.
+
+-   responses_2024-01-09.xlsx
+
+-   responses_2024-01-09_easyread.xlsx
+
+-   responses_2024-01-09_hard_copies.xlsx
+
+-   responses_2024-01-09_hard_copies_easyread.xlsx
+
+### Load in packages, config file, and helpful functions
+
+```{r}
+# Check librarian package management installed
+if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
+
+# Use suppress to prevent build warnings
+# Note can install from github
+suppressWarnings(librarian::shelf(
+  DataS-DHSC/DHSClogger,
+  DataS-DHSC/consultations,
+  tidyverse,
+  readxl,
+  yaml
+))
+
+# Read the config file
+config <- yaml::read_yaml(
+  file.path("input", "config.yml"),
+  readLines.warn = FALSE
+)
+general_params <- config$general_params
+
+# Read in some functions to help simplify code
+source("R/helpful_functions.R")
+```
+
+### Read in responses files
+
+If you don't have easyread responses or hard copies, run this chunk then skip to "**Join data into one big table**"
+
+```{r}
+# Read in main and bind with main hard copy responses
+responses <- read_xlsx(
+  path_responses, 
+  .name_repair = "unique_quiet",
+  col_types = "text"
+)
+if (general_params$include_hard_copies) {
+  responses <- responses %>% 
+    bind_rows(
+      read_xlsx(
+        path_responses_hard_copies, 
+        .name_repair = "unique_quiet",
+        col_types = "text"
+      ) %>% 
+        mutate(
+          `Response ID` = paste0("main_hard_copy_", row_number()),
+          Completed = as.character(as.Date(general_params$date_main))
+        )
+    )
+}
+
+# Read in easyread and bind with easyread hard copy responses
+if (general_params$include_easyread) {
+  responses_easy <- read_xlsx(
+    path_responses_easy, 
+    .name_repair = "unique_quiet",
+    col_types = "text"
+  )
+  if (general_params$include_hard_copies) {
+    responses_easy <- responses_easy %>% 
+      bind_rows(
+        read_xlsx(
+          path_responses_easy_hard_copies, 
+          .name_repair = "unique_quiet",
+          col_types = "text"
+        ) %>% 
+          mutate(
+            `Response ID` = paste0("easyread_hard_copy_", row_number()),
+            Completed = as.character(as.Date(general_params$date_easy))
+          )
+      )
+  }
+}
+```
+
+### Use manifest to standardise all data
+
+```{r}
+manifest_path <- file.path(
+  general_params$manifest_dir,
+  general_params$manifest_file
+)
+
+manifests <- excel_sheets(manifest_path) %>%
+  set_names() %>%
+  map(~ read_xlsx(manifest_path, sheet = .x, na = c("", "NA")))
+
+# Standardise possible responses (using manifest)
+updated_data <- standardise_mappings(responses, responses_easy, manifests)
+responses <- updated_data$responses
+responses_easy <- updated_data$responses_easy
+
+# Change column headers to fit those in main (using manifest)
+responses_easy <- responses_easy %>%
+  setNames(
+    setNames(
+      as.character(
+        manifests$all$question[!is.na(manifests$all$col_id_easy)]
+      ),
+      names(.)[manifests$all$col_id_easy[!is.na(manifests$all$col_id_easy)]]
+    )
+  )
+
+# Add assumed fields (using manifest)
+assumed_responses <- manifests$all %>% 
+  filter(!is.na(assumed_easy)) %>% 
+  select(question, assumed_easy)
+
+for (i in 1:nrow(assumed_responses)) {
+  current_question <- assumed_responses$question[i]
+  current_choice <- assumed_responses$assumed_easy[i]
+  responses_easy[[current_question]] <- current_choice
+}
+```
+
+### Standardise free text ages into ONS age categories
+
+```{r}
+responses_easy <- responses_easy %>% 
+      mutate(`What is your age?` = text_to_age(`What is your age?`))
+```
+
+### Join data into one big table
+
+If there is no easyread data to deal with, run this chunk anyway.
+
+```{r}
+if (general_params$include_easyread) {
+  responses_all <- bind_rows(responses, responses_easy) %>% 
+    select(all_of(names(responses)))
+} else {
+  responses_all <- responses
+}
+
+# Remove any responses that haven't been completed and remove redundant cols
+responses_all <- responses_all %>% 
+    filter(!is.na(Completed)) %>% 
+    select(
+      -c(manifests$all %>% filter(omit) %>% pull(question))
+    )
+```
+
+### Save to file
+
+```{r}
+responses_all %>%
+    write.csv(
+      paste0(
+        general_params$output_dir,
+        "responses_all_",
+        str_replace_all(Sys.Date(), "-", "_"),
+        ".csv"
+      ),
+      row.names = FALSE,
+      na = ""
+    )
+
+```
+
+### Further steps
+
+Any further data manipulation tends to vary considerably from consultation to consultation. Such filtering and writing to other tables can be added below or done manually in excel.
+
+For example...
+
+```{r}
+# Output a table for just individuals
+responses_all %>%
+  filter(
+    `In what capacity are you responding to this survey?` %in% c(
+      "An individual sharing my personal views and experiences",
+      "On behalf of someone else"
+    )
+  ) %>%
+  write.csv(
+    paste0(
+      general_params$output_dir,
+      "responses_indiv_",
+      str_replace_all(Sys.Date(), "-", "_"),
+      ".csv"
+    )
+  )
+
+# Output a frequency table of counts by location
+responses_all %>%
+  group_by(
+    `Where do you live in the UK?`,
+    `Which area of England do you live in?`
+  ) %>%
+  summarise(Frequency = n()) %>%
+  ungroup() %>%
+  write.csv(
+    paste0(
+      general_params$output_frequency,
+      Sys.Date(),
+      "_location_freq.csv"
+    )
+  )
+```
