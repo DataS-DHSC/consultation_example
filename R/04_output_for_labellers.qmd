@@ -15,45 +15,108 @@ This template reads in the output from the LDA topic models and outputs material
 
 -   PDF file per question/model with top ten words and text from example responses for each topic.
 
-Read in LDA output data and responses
+### Setup {.unnumbered}
 
 ```{r}
+#| output: false
+#| warning: false
+
+if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
+
+# need to sort out the below
+librarian::stock(
+  c(
+    "tidyverse",
+    "here", "yaml",
+    "tidytext",
+    "writexl",
+    "DT"
+  )
+)
+
+credentials::set_github_pat()
+librarian::stock(
+  c(
+    "DataS-DHSC/DHSCconsultations"
+  )
+)
+
+library(tidyverse)
+
+here::i_am(file.path("R", "04_output_for_labellers.qmd"))
+
 # Read the config file
 config <- yaml::read_yaml(
-  file.path("input", "config.yml")
+  here::here("input", "config.yml")
 )
 
 general_params <- config$general_params
 
-# Read in all responses
-responses_all <- read_csv(
-  paste0(
+# number of beta values to display
+n_beta <- 10
+
+# value above which to aggregate topic counts
+max_topics <- 15
+
+# number of example responses
+n_examples <- 5
+```
+
+## Load responses
+
+Load all your responses into the variable below.
+
+```{r}
+responses <- DHSCconsultations::dummy_response
+```
+
+## Load LDA model
+
+Load your LDA model created in the previous step
+
+```{r}
+lda_object <- read_rds(
+  here::here(
     general_params$output_dir,
-    "responses_all_",
-    str_replace_all(Sys.Date(), "-", "_"),
-    ".csv"
+    "lda",
+    "lda_object.rds"
   )
 )
 ```
 
-Create excel files
+## Create excel and pdf files
+
+PDF files are created using r markdown template found at \[output_for_labellers.rmd\](https://github.com/DataS-DHSC/consultation_example/blob/main/R/output_for_labellers.rmd). Note that these cannot be converted to quarto yet due to the inability to pass variables.
 
 ```{r}
-lda_object <- readRDS("output/lda_object.rds")
-lda_question_names <- lda_object %>% names()
+questions <- lda_object %>% names()
 
-for (question in lda_question_names) {
+labellers_folder <- here::here(
+  general_params$output_dir,
+  "output_for_labellers"
+)
+
+dir.create(labellers_folder, showWarnings = FALSE, recursive = TRUE)
+
+for (i in seq_along(questions)) {
+  q <- questions[[i]]
   
-  # Get the gamma table for the current question
-  table_gamma <- lda_object[[question]]$gamma
+  filename <- sprintf(
+    "topic_gamma_q%02d.xlsx", i
+  )
   
   # Join responses_all with the current table_gamma
-  responses_and_gamma <- responses_all %>%
-    select(response_id, question) %>% 
-    mutate(response_id = as.character(response_id)) %>%
-    left_join(table_gamma, by = c("response_id" = "document")) %>%
-    mutate(question = question) %>% 
-    rename(response_text = 2) %>% 
+  responses_enriched <- responses %>%
+    rename(response_text = q) %>%
+    select(response_id, response_text) %>% 
+    mutate(
+      response_id = as.character(response_id),
+      question = q
+    ) %>%
+    left_join(
+      lda_object[[q]]$gamma, 
+      by = join_by(response_id == document) 
+    ) %>%
     select(
       response_id,
       question,
@@ -61,25 +124,54 @@ for (question in lda_question_names) {
       topic,
       gamma
     )
-  
-  # Write to file
-  filename <- paste0("output/output_for_labellers/topic_gamma_q", i, ".csv")
-  write.csv(responses_and_gamma, file = filename, row.names = FALSE)
+
+  # Save excel
+  writexl::write_xlsx(
+    responses_enriched,
+    here::here(
+      labellers_folder,
+      filename
+    )
+  )
   
   # Progress message
-  cat("Saved file:", filename, "\n")
-}
-```
-
-Create PDF files by looping over \[output_for_labellers.rmd\](https://github.com/DataS-DHSC/consultation_example/blob/main/R/output_for_labellers.rmd)
-
-```{r}
-question_text_list <- names(lda_object)
-
-for (i in seq_along(question_text_list)) {
+  print(
+    sprintf("Saved file: %s", filename)
+  )
+  
+  env_rmd <- new.env()
+  env_rmd[["question_text"]] <- q
+  env_rmd[["n_examples"]] <- n_examples
+  env_rmd[["beta_values"]] <- lda_object[[q]]$beta %>%
+    slice_max(beta, n = n_beta, by = topic, with_ties = FALSE)
+  
+  # Calculate gamma threshold to leave all responses with at least one topic.
+  gamma_threshold <- lda_object[[q]]$gamma %>%
+    summarise(max_gamma = max(gamma), .by = document) %>%
+    slice_min(max_gamma, n = 1, with_ties = FALSE) %>%
+    pull(max_gamma) %>%
+    max()
+  
+  env_rmd[["gamma_counts"]] <- lda_object[[q]]$gamma %>% 
+    filter(gamma >= gamma_threshold) %>% 
+    count(document) %>% 
+    mutate(n = if_else(n > max_topics, max_topics, n)) %>% 
+    group_by(n) %>% 
+    summarise(count = sum(n))
+  
+  env_rmd[["gamma_text"]] <- responses_enriched %>% 
+    slice_max(gamma, n = n_examples, by = topic, with_ties = FALSE) %>%
+    select(topic, response_text)
+  
   rmarkdown::render(
-    "R/output_for_labellers.Rmd",
-    output_file = paste0("../output/output_for_labellers/question_", i ,".pdf")
+    here::here(
+      "R",
+      "output_for_labellers.Rmd"
+    ),
+    output_dir = labellers_folder,
+    output_file = sprintf("question_%02d.pdf", i),
+    envir = env_rmd
   )
 }
 ```
+
