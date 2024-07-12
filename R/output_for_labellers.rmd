@@ -1,0 +1,133 @@
+---
+title: Consultation (template)
+subtitle: Descriptive plots
+author: Data Science Hub
+date: "`r Sys.Date()`"
+output: 
+  pdf_document: 
+    latex_engine: pdflatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 12
+)
+
+library(tidyverse)
+library(tidytext)
+
+base_colour <- "#006652"
+base_alpha <- 0.65
+```
+
+## Question: `r question_text`
+
+## Most important words by topics
+
+```{r}
+#| fig.height = 12
+
+plot <- 
+  ggplot(
+    beta_values %>%
+      mutate(term = reorder_within(term, beta, topic)), 
+    aes(beta, term)
+  ) + 
+  geom_bar(
+    stat = "identity", 
+    fill = base_colour, 
+    alpha = base_alpha
+  ) + 
+  scale_y_reordered() +
+  facet_wrap(
+    ~topic, 
+    scales = "free", 
+    ncol = 4
+  ) + 
+  theme_minimal(
+    base_size = 18
+  )
+
+print(plot)
+```
+
+## Topics per response
+
+```{r}
+#| fig.height = 7
+
+plot <- 
+  ggplot(
+    gamma_counts, 
+    aes(n, count)
+  ) +
+  geom_col(
+    fill = base_colour, 
+    alpha = base_alpha
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0)
+  ) + 
+  theme_minimal(
+    base_size = 18
+  ) +
+  labs(
+    title = "Topics per response",
+    x = "Number of topics",
+    y = "Number of responses"
+  )
+
+print(plot)
+```
+
+## Indicative text (Top `r n_examples` by topic)
+
+``` {r}
+#| results = "asis"
+# Get total number of topics to loop through
+all_topics <- gamma_text %>% pull(topic) %>% unique() %>% sort()
+
+# Loop through each topic and print the results
+for (topic_num in all_topics){
+  cat("\n## Topic ", topic_num, "\n")
+
+  plot <- 
+    ggplot(
+      beta_values %>%
+        filter(topic == topic_num),
+      aes(beta, reorder(term, beta))
+    ) +
+    geom_bar(
+      stat = "identity", 
+      fill = "blue", 
+      alpha = 0.75
+    ) +
+    theme_minimal(
+      base_size = 14
+    ) + 
+    theme(
+      axis.title.y = element_blank()
+    ) +
+    labs(
+      title = sprintf("Most important words", topic_num),
+      x = "Beta"
+    )
+
+  print(plot)
+  
+  cat("\n\n")
+  
+  topic_texts <- gamma_text %>%
+    filter(topic == topic_num) %>%
+    pull(response_text)
+  
+  for (u in seq_along(topic_texts)) {
+    cat("\n### ", as.character(u), "\n")
+    cat(topic_texts[[u]], "\n")
+  }
+}
+
+```

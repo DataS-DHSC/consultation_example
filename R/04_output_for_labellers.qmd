@@ -1,0 +1,177 @@
+---
+title: "Step 4 - LDA output for labellers"
+format: 
+  html:
+    number-sections: true
+    anchor-sections: true
+editor: visual
+---
+
+## LDA output for labellers
+
+This template reads in the output from the LDA topic models and outputs materials needed for labelling:
+
+-   Excel file per question/model with each response-topic assignment, along with gamma score and original text.
+
+-   PDF file per question/model with top ten words and text from example responses for each topic.
+
+### Setup {.unnumbered}
+
+```{r}
+#| output: false
+#| warning: false
+
+if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
+
+# need to sort out the below
+librarian::stock(
+  c(
+    "tidyverse",
+    "here", "yaml",
+    "tidytext",
+    "writexl",
+    "DT"
+  )
+)
+
+credentials::set_github_pat()
+librarian::stock(
+  c(
+    "DataS-DHSC/DHSCconsultations"
+  )
+)
+
+library(tidyverse)
+
+here::i_am(file.path("R", "04_output_for_labellers.qmd"))
+
+# Read the config file
+config <- yaml::read_yaml(
+  here::here("input", "config.yml")
+)
+
+general_params <- config$general_params
+
+# number of beta values to display
+n_beta <- 10
+
+# value above which to aggregate topic counts
+max_topics <- 15
+
+# number of example responses
+n_examples <- 5
+```
+
+## Load responses
+
+Load all your responses into the variable below.
+
+```{r}
+responses <- DHSCconsultations::dummy_response
+```
+
+## Load LDA model
+
+Load your LDA model created in the previous step
+
+```{r}
+lda_object <- read_rds(
+  here::here(
+    general_params$output_dir,
+    "lda",
+    "lda_object.rds"
+  )
+)
+```
+
+## Create excel and pdf files
+
+PDF files are created using r markdown template found at \[output_for_labellers.rmd\](https://github.com/DataS-DHSC/consultation_example/blob/main/R/output_for_labellers.rmd). Note that these cannot be converted to quarto yet due to the inability to pass variables.
+
+```{r}
+questions <- lda_object %>% names()
+
+labellers_folder <- here::here(
+  general_params$output_dir,
+  "output_for_labellers"
+)
+
+dir.create(labellers_folder, showWarnings = FALSE, recursive = TRUE)
+
+for (i in seq_along(questions)) {
+  q <- questions[[i]]
+  
+  filename <- sprintf(
+    "topic_gamma_q%02d.xlsx", i
+  )
+  
+  # Join responses_all with the current table_gamma
+  responses_enriched <- responses %>%
+    rename(response_text = q) %>%
+    select(response_id, response_text) %>% 
+    mutate(
+      response_id = as.character(response_id),
+      question = q
+    ) %>%
+    left_join(
+      lda_object[[q]]$gamma, 
+      by = join_by(response_id == document) 
+    ) %>%
+    select(
+      response_id,
+      question,
+      response_text,
+      topic,
+      gamma
+    )
+
+  # Save excel
+  writexl::write_xlsx(
+    responses_enriched,
+    here::here(
+      labellers_folder,
+      filename
+    )
+  )
+  
+  # Progress message
+  print(
+    sprintf("Saved file: %s", filename)
+  )
+  
+  env_rmd <- new.env()
+  env_rmd[["question_text"]] <- q
+  env_rmd[["n_examples"]] <- n_examples
+  env_rmd[["beta_values"]] <- lda_object[[q]]$beta %>%
+    slice_max(beta, n = n_beta, by = topic, with_ties = FALSE)
+  
+  # Calculate gamma threshold to leave all responses with at least one topic.
+  gamma_threshold <- lda_object[[q]]$gamma %>%
+    summarise(max_gamma = max(gamma), .by = document) %>%
+    slice_min(max_gamma, n = 1, with_ties = FALSE) %>%
+    pull(max_gamma) %>%
+    max()
+  
+  env_rmd[["gamma_counts"]] <- lda_object[[q]]$gamma %>% 
+    filter(gamma >= gamma_threshold) %>% 
+    count(document) %>% 
+    mutate(n = if_else(n > max_topics, max_topics, n)) %>% 
+    group_by(n) %>% 
+    summarise(count = sum(n))
+  
+  env_rmd[["gamma_text"]] <- responses_enriched %>% 
+    slice_max(gamma, n = n_examples, by = topic, with_ties = FALSE) %>%
+    select(topic, response_text)
+  
+  rmarkdown::render(
+    here::here(
+      "R",
+      "output_for_labellers.Rmd"
+    ),
+    output_dir = labellers_folder,
+    output_file = sprintf("question_%02d.pdf", i),
+    envir = env_rmd
+  )
+}
+```
+
