@@ -30,7 +30,7 @@ The manifest is an excel spreadsheet that you fill out to give enough informatio
 The first sheet in [manifest.xlsx](https://github.com/DataS-DHSC/consultation_example/blob/main/input/manifest/manifest.xlsx) should contain the following:
 
 | Column          | Description                                                                               |
-|----------------|--------------------------------------------------------|
+|-------------------|-----------------------------------------------------|
 | `question`      | The exact column headers in your main data file.                                          |
 | `type`          | The type of data entered into each (multi-choice, long text, etc).                        |
 | `col_id`        | The column number, starting at one from the left side.                                    |
@@ -84,7 +84,7 @@ Now you've made the manifest file, you may find there are a few more steps requi
 **Firstly, you'll need to add some metadata to [config.yml](https://github.com/DataS-DHSC/consultation_example/blob/main).**
 
 | general_params      | Description                                           |
-|--------------------|---------------------------------------------------|
+|----------------------|--------------------------------------------------|
 | date_main           | The closing date of the main consultation.            |
 | date_easy           | The closing date of the easy read consultation.       |
 | input_dir           | Directory or path (leave as is).                      |
@@ -116,28 +116,42 @@ You may have noticed the config has given paths, directories, and parts of filen
 ### Load in packages, config file, and helpful functions
 
 ```{r}
-# Check librarian package management installed
+#| output: false
+#| warning: false
+
 if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
 
-# Use suppress to prevent build warnings
-# Note can install from github
-suppressWarnings(librarian::shelf(
-  DataS-DHSC/DHSClogger,
-  DataS-DHSC/consultations,
-  tidyverse,
-  readxl,
-  yaml
-))
-
-# Read the config file
-config <- yaml::read_yaml(
-  file.path("input", "config.yml"),
-  readLines.warn = FALSE
+# need to sort out the below
+librarian::stock(
+  c(
+    "tidyverse",
+    "tidytext", "here", "yaml",
+    "writexl",
+    "DT",
+    "credentials"
+  )
 )
+
+credentials::set_github_pat()
+librarian::stock(
+  c(
+    "DataS-DHSC/DHSCconsultations"
+  )
+)
+
+library(tidyverse)
+
+here::i_am(file.path("R", "01_load_data.qmd"))
+
+# read config file
+config <- yaml::read_yaml(
+  here::here("input", "config.yml")
+)
+
 general_params <- config$general_params
 
-# Read in some functions to help simplify code
-source("R/helpful_functions.R")
+# read in some functions to help simplify code
+source(here::here("R", "helpful_functions.R"))
 ```
 
 ### Read in responses files
@@ -193,11 +207,6 @@ if (general_params$include_easyread) {
 ### Use manifest to standardise all data
 
 ```{r}
-manifest_path <- file.path(
-  general_params$manifest_dir,
-  general_params$manifest_file
-)
-
 manifests <- excel_sheets(manifest_path) %>%
   set_names() %>%
   map(~ read_xlsx(manifest_path, sheet = .x, na = c("", "NA")))
@@ -251,27 +260,28 @@ if (general_params$include_easyread) {
 
 # Remove any responses that haven't been completed and remove redundant cols
 responses_all <- responses_all %>% 
-    filter(!is.na(Completed)) %>% 
-    select(
-      -c(manifests$all %>% filter(omit) %>% pull(question))
-    )
+  filter(!is.na(Completed)) %>% 
+  select(
+    -c(manifests$all %>% filter(omit) %>% pull(question))
+  )
 ```
 
 ### Save to file
 
 ```{r}
 responses_all %>%
-    write.csv(
+  write.csv(
+    here::here(
       paste0(
         general_params$output_dir,
         "responses_all_",
         str_replace_all(Sys.Date(), "-", "_"),
         ".csv"
-      ),
-      row.names = FALSE,
-      na = ""
-    )
-
+      )
+    ),
+    row.names = FALSE,
+    na = ""
+  )
 ```
 
 ### Further steps
@@ -290,11 +300,13 @@ responses_all %>%
     )
   ) %>%
   write.csv(
-    paste0(
-      general_params$output_dir,
-      "responses_indiv_",
-      str_replace_all(Sys.Date(), "-", "_"),
-      ".csv"
+    here::here(
+      paste0(
+        general_params$output_dir,
+        "responses_indiv_",
+        str_replace_all(Sys.Date(), "-", "_"),
+        ".csv"
+      )
     )
   )
 
@@ -307,10 +319,12 @@ responses_all %>%
   summarise(Frequency = n()) %>%
   ungroup() %>%
   write.csv(
-    paste0(
-      general_params$output_frequency,
-      Sys.Date(),
-      "_location_freq.csv"
+    here::here(
+      paste0(
+        general_params$output_frequency,
+        Sys.Date(),
+        "_location_freq.csv"
+      )
     )
   )
 ```
