@@ -54,9 +54,11 @@ copy_stem_word_exceptions <- function() {
 
 # generic helpers
 .read_consultation_file <- function(...) {
-  file_path <- file.path(config$general_params$input_dir, ...)
+  file_path <- here::here(config$general_params$input_dir, ...)
   
-  if (!file.exists(file_path)) return(NULL)
+  if (!file.exists(file_path)) {
+    stop(sprintf("Unable to find file %s.", file_path))
+  }
     
   df <- readr::read_lines(
     file_path,
@@ -68,10 +70,9 @@ copy_stem_word_exceptions <- function() {
 
 .copy_consultation_file <- function(...) {
   res <- file.copy(
-    file.path(config$general_params$input_dir, ...),
-    file.path(config$general_params$output_dir, ...),
-    overwrite = TRUE,
-    showWarnings = TRUE
+    here::here(config$general_params$input_dir, ...),
+    here::here(config$general_params$output_dir, ...),
+    overwrite = TRUE
   )
   
   return(invisible(res))

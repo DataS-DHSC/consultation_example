@@ -2,7 +2,7 @@
 # Data loading and cleaning -----------------------------------------------
 
 # Paths to all responses data
-path_responses <- file.path(
+path_responses <- here::here(
   general_params$responses_dir,
   paste0(
     general_params$responses_prefix,
@@ -11,7 +11,7 @@ path_responses <- file.path(
   )
 )
 
-path_responses_hard_copies <- file.path(
+path_responses_hard_copies <- here::here(
   general_params$responses_dir,
   paste0(
     general_params$responses_prefix,
@@ -21,7 +21,7 @@ path_responses_hard_copies <- file.path(
   )
 )
 
-path_responses_easy <- file.path(
+path_responses_easy <- here::here(
   general_params$responses_dir,
   paste0(
     general_params$responses_prefix,
@@ -30,7 +30,7 @@ path_responses_easy <- file.path(
   )
 )
 
-path_responses_easy_hard_copies <- file.path(
+path_responses_easy_hard_copies <- here::here(
   general_params$responses_dir,
   paste0(
     general_params$responses_prefix,
@@ -40,6 +40,11 @@ path_responses_easy_hard_copies <- file.path(
   )
 )
 
+# Path to manifest file
+manifest_path <- here::here(
+  general_params$manifest_dir,
+  general_params$manifest_file
+)
 
 # Function to create a replacement mapping to final
 create_replacement_map <- function(manifest, from, to) {

@@ -27,7 +27,8 @@ if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
 librarian::stock(
   c(
     "tidyverse",
-    "here", "yaml",
+    "here",
+    "yaml",
     "tidytext",
     "writexl",
     "DT"
@@ -174,4 +175,3 @@ for (i in seq_along(questions)) {
   )
 }
 ```
-

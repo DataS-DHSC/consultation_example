@@ -24,14 +24,15 @@ Prior to running the LDA model you need to make sure that:
 #| output: false
 #| warning: false
 
-
 if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
 
 # need to sort out the below
 librarian::stock(
   c(
     "tidyverse",
-    "tidytext", "here", "yaml",
+    "tidytext",
+    "here",
+    "yaml",
     "writexl",
     "DT",
     "credentials"
@@ -57,7 +58,6 @@ config <- yaml::read_yaml(
 # load in file tools
 file_tools <- new.env()
 source(here::here("R", "file_tools.R"), local = file_tools)
-
 ```
 
 ## Load responses
