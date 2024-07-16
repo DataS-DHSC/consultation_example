@@ -30,7 +30,7 @@ The manifest is an excel spreadsheet that you fill out to give enough informatio
 The first sheet in [manifest.xlsx](https://github.com/DataS-DHSC/consultation_example/blob/main/input/manifest/manifest.xlsx) should contain the following:
 
 | Column          | Description                                                                               |
-|-------------------|-----------------------------------------------------|
+|-----------------|-------------------------------------------------------------------------------------------|
 | `question`      | The exact column headers in your main data file.                                          |
 | `type`          | The type of data entered into each (multi-choice, long text, etc).                        |
 | `col_id`        | The column number, starting at one from the left side.                                    |
@@ -62,7 +62,7 @@ For example, the map_likert sheet may look something like this\...
 \...and the one of the map sheets may look something like this:
 
 | main                     | easy                     | final                    |
-|------------------------|------------------------|------------------------|
+|--------------------------|--------------------------|--------------------------|
 | East Midlands            | East Midlands            | East Midlands            |
 | East of England          | East of England          | East of England          |
 | London                   | London                   | London                   |
@@ -84,7 +84,7 @@ Now you've made the manifest file, you may find there are a few more steps requi
 **Firstly, you'll need to add some metadata to [config.yml](https://github.com/DataS-DHSC/consultation_example/blob/main).**
 
 | general_params      | Description                                           |
-|----------------------|--------------------------------------------------|
+|---------------------|-------------------------------------------------------|
 | date_main           | The closing date of the main consultation.            |
 | date_easy           | The closing date of the easy read consultation.       |
 | input_dir           | Directory or path (leave as is).                      |
@@ -121,11 +121,13 @@ You may have noticed the config has given paths, directories, and parts of filen
 
 if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
 
-# need to sort out the below
 librarian::stock(
   c(
     "tidyverse",
-    "tidytext", "here", "yaml",
+    "tidytext",
+    "here",
+    "yaml",
+    "readxl",
     "writexl",
     "DT",
     "credentials"
@@ -140,6 +142,7 @@ librarian::stock(
 )
 
 library(tidyverse)
+library(readxl)
 
 here::i_am(file.path("R", "01_load_data.qmd"))
 
@@ -161,7 +164,7 @@ If you don't have easyread responses or hard copies, run this chunk then skip to
 ```{r}
 # Read in main and bind with main hard copy responses
 responses <- read_xlsx(
-  path_responses, 
+  here::here(path_responses),
   .name_repair = "unique_quiet",
   col_types = "text"
 )
@@ -169,7 +172,7 @@ if (general_params$include_hard_copies) {
   responses <- responses %>% 
     bind_rows(
       read_xlsx(
-        path_responses_hard_copies, 
+        here::here(path_responses_hard_copies),
         .name_repair = "unique_quiet",
         col_types = "text"
       ) %>% 
@@ -183,7 +186,7 @@ if (general_params$include_hard_copies) {
 # Read in easyread and bind with easyread hard copy responses
 if (general_params$include_easyread) {
   responses_easy <- read_xlsx(
-    path_responses_easy, 
+    here::here(path_responses_easy),
     .name_repair = "unique_quiet",
     col_types = "text"
   )
@@ -191,7 +194,7 @@ if (general_params$include_easyread) {
     responses_easy <- responses_easy %>% 
       bind_rows(
         read_xlsx(
-          path_responses_easy_hard_copies, 
+          here::here(path_responses_easy_hard_copies),
           .name_repair = "unique_quiet",
           col_types = "text"
         ) %>% 
@@ -207,9 +210,9 @@ if (general_params$include_easyread) {
 ### Use manifest to standardise all data
 
 ```{r}
-manifests <- excel_sheets(manifest_path) %>%
+manifests <- excel_sheets(here::here(manifest_path)) %>%
   set_names() %>%
-  map(~ read_xlsx(manifest_path, sheet = .x, na = c("", "NA")))
+  map(~ read_xlsx(here::here(manifest_path), sheet = .x, na = c("", "NA")))
 
 # Standardise possible responses (using manifest)
 updated_data <- standardise_mappings(responses, responses_easy, manifests)
@@ -291,6 +294,8 @@ Any further data manipulation tends to vary considerably from consultation to co
 For example...
 
 ```{r}
+#| warning: false
+
 # Output a table for just individuals
 responses_all %>%
   filter(
@@ -315,7 +320,7 @@ responses_all %>%
   group_by(
     `Where do you live in the UK?`,
     `Which area of England do you live in?`
-  ) %>%
+  ) %>% 
   summarise(Frequency = n()) %>%
   ungroup() %>%
   write.csv(

@@ -30,7 +30,9 @@ if (!requireNamespace("librarian")) install.packages("librarian", quiet = TRUE)
 librarian::stock(
   c(
     "tidyverse",
-    "tidytext", "here", "yaml",
+    "tidytext",
+    "here",
+    "yaml",
     "writexl",
     "DT",
     "credentials"
