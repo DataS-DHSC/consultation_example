@@ -44,7 +44,15 @@ librarian::stock(
 
 library(tidyverse)
 
-if (!requireNamespace("tinytex")) {install.packages("tinytex")}
+if (!requireNamespace("tinytex", quietly = TRUE)) {install.packages("tinytex")}
+
+library(tinytex)
+
+if (!tinytex::is_tinytex()) {
+  tinytex::install_tinytex()
+} else {
+  message("TinyTeX is already installed.")
+}
 
 here::i_am(file.path("R", "04_output_for_labellers.qmd"))
 
