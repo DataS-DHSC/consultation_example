@@ -44,6 +44,8 @@ librarian::stock(
 
 library(tidyverse)
 
+if (!requireNamespace("tinytex")) {install.packages("tinytex")}
+
 here::i_am(file.path("R", "04_output_for_labellers.qmd"))
 
 # Read the config file
