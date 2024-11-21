@@ -11,7 +11,7 @@ editor: visual
 
 A common issue with the analysis of consultation responses is standardising data from several different sources of data. Often these are given as standard data (we will call this "main"), the easy read counterpart, the hard copies for both of these respectively.
 
-The data cleaning problem arises due to the questions and possible responses to some questions being different between the data sources. For example\...
+The data cleaning problem arises due to the questions and possible responses to some questions being different between the data sources. For example...
 
 -   Main question: To what extent do you agree with \[thing A\]?
 
@@ -30,7 +30,7 @@ The manifest is an excel spreadsheet that you fill out to give enough informatio
 The first sheet in [manifest.xlsx](https://github.com/DataS-DHSC/consultation_example/blob/main/input/manifest/manifest.xlsx) should contain the following:
 
 | Column          | Description                                                                               |
-|-----------------|-------------------------------------------------------------------------------------------|
+|----------------|--------------------------------------------------------|
 | `question`      | The exact column headers in your main data file.                                          |
 | `type`          | The type of data entered into each (multi-choice, long text, etc).                        |
 | `col_id`        | The column number, starting at one from the left side.                                    |
@@ -49,7 +49,7 @@ The example manifest file contains map_yesno, map_likert, map2, map4, and map6 r
 
 In each of these sheets, give the mappings for main, easy read, then the final mappings that everything should be set to.
 
-For example, the map_likert sheet may look something like this\...
+For example, the map_likert sheet may look something like this...
 
 | main              | easy                | final             |
 |-------------------|---------------------|-------------------|
@@ -59,10 +59,10 @@ For example, the map_likert sheet may look something like this\...
 | Strongly disagree | Definitely disagree | Strongly disagree |
 | NA                | NA                  | NA                |
 
-\...and the one of the map sheets may look something like this:
+...and the one of the map sheets may look something like this:
 
 | main                     | easy                     | final                    |
-|--------------------------|--------------------------|--------------------------|
+|------------------------|------------------------|------------------------|
 | East Midlands            | East Midlands            | East Midlands            |
 | East of England          | East of England          | East of England          |
 | London                   | London                   | London                   |
@@ -84,7 +84,7 @@ Now you've made the manifest file, you may find there are a few more steps requi
 **Firstly, you'll need to add some metadata to [config.yml](https://github.com/DataS-DHSC/consultation_example/blob/main).**
 
 | general_params      | Description                                           |
-|---------------------|-------------------------------------------------------|
+|--------------------|---------------------------------------------------|
 | date_main           | The closing date of the main consultation.            |
 | date_easy           | The closing date of the easy read consultation.       |
 | input_dir           | Directory or path (leave as is).                      |
@@ -169,13 +169,13 @@ responses <- read_xlsx(
   col_types = "text"
 )
 if (general_params$include_hard_copies) {
-  responses <- responses %>% 
+  responses <- responses %>%
     bind_rows(
       read_xlsx(
         here::here(path_responses_hard_copies),
         .name_repair = "unique_quiet",
         col_types = "text"
-      ) %>% 
+      ) %>%
         mutate(
           `Response ID` = paste0("main_hard_copy_", row_number()),
           Completed = as.character(as.Date(general_params$date_main))
@@ -191,13 +191,13 @@ if (general_params$include_easyread) {
     col_types = "text"
   )
   if (general_params$include_hard_copies) {
-    responses_easy <- responses_easy %>% 
+    responses_easy <- responses_easy %>%
       bind_rows(
         read_xlsx(
           here::here(path_responses_easy_hard_copies),
           .name_repair = "unique_quiet",
           col_types = "text"
-        ) %>% 
+        ) %>%
           mutate(
             `Response ID` = paste0("easyread_hard_copy_", row_number()),
             Completed = as.character(as.Date(general_params$date_easy))
@@ -231,8 +231,8 @@ responses_easy <- responses_easy %>%
   )
 
 # Add assumed fields (using manifest)
-assumed_responses <- manifests$all %>% 
-  filter(!is.na(assumed_easy)) %>% 
+assumed_responses <- manifests$all %>%
+  filter(!is.na(assumed_easy)) %>%
   select(question, assumed_easy)
 
 for (i in 1:nrow(assumed_responses)) {
@@ -245,8 +245,8 @@ for (i in 1:nrow(assumed_responses)) {
 ### Standardise free text ages into ONS age categories
 
 ```{r}
-responses_easy <- responses_easy %>% 
-      mutate(`What is your age?` = text_to_age(`What is your age?`))
+responses_easy <- responses_easy %>%
+  mutate(`What is your age?` = text_to_age(`What is your age?`))
 ```
 
 ### Join data into one big table
@@ -255,15 +255,15 @@ If there is no easyread data to deal with, run this chunk anyway.
 
 ```{r}
 if (general_params$include_easyread) {
-  responses_all <- bind_rows(responses, responses_easy) %>% 
+  responses_all <- bind_rows(responses, responses_easy) %>%
     select(all_of(names(responses)))
 } else {
   responses_all <- responses
 }
 
 # Remove any responses that haven't been completed and remove redundant cols
-responses_all <- responses_all %>% 
-  filter(!is.na(Completed)) %>% 
+responses_all <- responses_all %>%
+  filter(!is.na(Completed)) %>%
   select(
     -c(manifests$all %>% filter(omit) %>% pull(question))
   )
@@ -272,16 +272,17 @@ responses_all <- responses_all %>%
 ### Save to file
 
 ```{r}
+out_file <- here::here(
+  paste0(
+    general_params$output_dir,
+    "responses_all_",
+    str_replace_all(Sys.Date(), "-", "_"),
+    ".csv"
+  )
+)
+make_parent_dir(out_file)
 responses_all %>%
-  write.csv(
-    here::here(
-      paste0(
-        general_params$output_dir,
-        "responses_all_",
-        str_replace_all(Sys.Date(), "-", "_"),
-        ".csv"
-      )
-    ),
+  write.csv(out_file,
     row.names = FALSE,
     na = ""
   )
@@ -297,6 +298,18 @@ For example...
 #| warning: false
 
 # Output a table for just individuals
+
+out_file <- here::here(
+  paste0(
+    general_params$output_dir,
+    "responses_indiv_",
+    str_replace_all(Sys.Date(), "-", "_"),
+    ".csv"
+  )
+)
+# If dir doesn't exist, make it.
+make_parent_dir(out_file)
+
 responses_all %>%
   filter(
     `In what capacity are you responding to this survey?` %in% c(
@@ -304,32 +317,26 @@ responses_all %>%
       "On behalf of someone else"
     )
   ) %>%
-  write.csv(
-    here::here(
-      paste0(
-        general_params$output_dir,
-        "responses_indiv_",
-        str_replace_all(Sys.Date(), "-", "_"),
-        ".csv"
-      )
-    )
-  )
+  write.csv(out_file)
 
 # Output a frequency table of counts by location
+
+out_file <- here::here(
+  paste0(
+    general_params$output_frequency,
+    Sys.Date(),
+    "_location_freq.csv"
+  )
+)
+make_parent_dir(out_file)
+
+
 responses_all %>%
   group_by(
     `Where do you live in the UK?`,
     `Which area of England do you live in?`
-  ) %>% 
+  ) %>%
   summarise(Frequency = n()) %>%
   ungroup() %>%
-  write.csv(
-    here::here(
-      paste0(
-        general_params$output_frequency,
-        Sys.Date(),
-        "_location_freq.csv"
-      )
-    )
-  )
+  write.csv(out_file)
 ```
