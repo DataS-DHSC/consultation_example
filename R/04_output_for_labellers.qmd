@@ -44,7 +44,15 @@ librarian::stock(
 
 library(tidyverse)
 
-if (!requireNamespace("tinytex")) {install.packages("tinytex")}
+if (!requireNamespace("tinytex", quietly = TRUE)) {install.packages("tinytex")}
+
+library(tinytex)
+
+if (!tinytex::is_tinytex()) {
+  tinytex::install_tinytex()
+} else {
+  message("TinyTeX is already installed.")
+}
 
 here::i_am(file.path("R", "04_output_for_labellers.qmd"))
 
@@ -108,6 +116,13 @@ for (i in seq_along(questions)) {
     "topic_gamma_q%02d.xlsx", i
   )
   
+  # Calculate gamma threshold to leave all responses with at least one topic.
+  gamma_threshold <- lda_object[[q]]$gamma %>%
+    summarise(max_gamma = max(gamma), .by = document) %>%
+    slice_min(max_gamma, n = 1, with_ties = FALSE) %>%
+    pull(max_gamma) %>%
+    max()
+  
   # Join responses_all with the current table_gamma
   responses_enriched <- responses %>%
     rename(response_text = q) %>%
@@ -120,6 +135,8 @@ for (i in seq_along(questions)) {
       lda_object[[q]]$gamma, 
       by = join_by(response_id == document) 
     ) %>%
+    filter(gamma >= gamma_threshold) %>%
+    arrange(topic, desc(gamma)) %>% 
     select(
       response_id,
       question,
@@ -127,7 +144,7 @@ for (i in seq_along(questions)) {
       topic,
       gamma
     )
-
+  
   # Save excel
   writexl::write_xlsx(
     responses_enriched,
@@ -147,13 +164,6 @@ for (i in seq_along(questions)) {
   env_rmd[["n_examples"]] <- n_examples
   env_rmd[["beta_values"]] <- lda_object[[q]]$beta %>%
     slice_max(beta, n = n_beta, by = topic, with_ties = FALSE)
-  
-  # Calculate gamma threshold to leave all responses with at least one topic.
-  gamma_threshold <- lda_object[[q]]$gamma %>%
-    summarise(max_gamma = max(gamma), .by = document) %>%
-    slice_min(max_gamma, n = 1, with_ties = FALSE) %>%
-    pull(max_gamma) %>%
-    max()
   
   env_rmd[["gamma_counts"]] <- lda_object[[q]]$gamma %>% 
     filter(gamma >= gamma_threshold) %>% 
