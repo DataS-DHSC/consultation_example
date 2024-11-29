@@ -32,7 +32,8 @@ librarian::stock(
     "yaml",
     "writexl",
     "DT",
-    "credentials"
+    "credentials",
+    "reshape2"
   )
 )
 

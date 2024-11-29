@@ -1,4 +1,3 @@
-
 # Data loading and cleaning -----------------------------------------------
 
 # Paths to all responses data
@@ -69,8 +68,9 @@ get_columns <- function(manifests_all, filter_expr, col_to_pull) {
 # Loop over each manifest mapping and standardise mappings in main and easyread
 standardise_mappings <- function(responses, responses_easy, manifests) {
   for (df_name in names(manifests)) {
-    if (df_name == "all") next
-    else {
+    if (df_name == "all") {
+      next
+    } else {
       custom_cols_easy <- get_columns(
         manifests$all,
         manifests$all$custom_map == df_name,
@@ -86,7 +86,7 @@ standardise_mappings <- function(responses, responses_easy, manifests) {
         custom_cols_easy,
         replacement_map_easy
       )
-      
+
       custom_cols_main <- get_columns(
         manifests$all,
         manifests$all$custom_map == df_name,
@@ -123,3 +123,13 @@ text_to_age <- function(age_text) {
   return(categorised_ages)
 }
 
+# If a subfolder doesn't exist, writing files fails. 
+# Check the dir exists, or make it exist. 
+
+make_parent_dir <- function(filepath) {
+  x <- dirname(filepath)
+  if (!dir.exists(x) && !dir.create(x, recursive = TRUE)) {
+    stop(sprintf("Unable to create directory %s", x))
+  }
+  invisible(filepath)
+}

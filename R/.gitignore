@@ -1,0 +1,8 @@
+# ignore everything
+*
+/*
+  
+# except this file
+!.gitignore
+# and the quatro files
+!.qmd
