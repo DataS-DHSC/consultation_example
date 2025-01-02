@@ -352,331 +352,41 @@ display: none;
 </div>
 
 
-<div id="template-code-for-a-basic-consultation-example-analysis-with-dummy-data." class="section level1">
-<h1>Template code for a basic consultation example analysis with dummy
-data.</h1>
-<p>A common issue with the analysis of consultation responses is
-standardising data from several different sources of data. Often these
-are given as standard data (we will call this “main”), the easy read
-counterpart, the hard copies for both of these respectively.</p>
-<p>The data cleaning problem arises due to the questions and possible
-responses to some questions being different between the data sources.
-For example…</p>
-<ul>
-<li>Main question: To what extent do you agree with [thing A]?
-<ul>
-<li>Possible responses: Strongly agree, Agree, Disagree, Strongly
-disagree, NA</li>
-</ul></li>
-<li>Corresponding easy read question: How much do you agree or disagree
-with [thing A]?
-<ul>
-<li>Possible responses: Definitely agree, Agree, Disagree, Definitely
-disagree, NA</li>
-</ul></li>
-</ul>
-<div id="guide-to-making-a-manifest-file" class="section level3">
-<h3>Guide to making a manifest file</h3>
-<p>The manifest is an excel spreadsheet that you fill out to give enough
-information to the code to standardise the data into one tidy table.</p>
-<p>The first sheet in <a href="https://github.com/DataS-DHSC/consultation_example/blob/main/input/manifest/manifest.xlsx">manifest.xlsx</a>
-should contain the following:</p>
-<table>
-<colgroup>
-<col width="20%" />
-<col width="79%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th align="right">Column</th>
-<th align="left">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="right"><code>question</code></td>
-<td align="left">The exact column headers in your main data file.</td>
-</tr>
-<tr class="even">
-<td align="right"><code>type</code></td>
-<td align="left">The type of data entered into each (multi-choice, long
-text, etc).</td>
-</tr>
-<tr class="odd">
-<td align="right"><code>col_id</code></td>
-<td align="left">The column number, starting at one from the left
-side.</td>
-</tr>
-<tr class="even">
-<td align="right"><code>question_easy</code></td>
-<td align="left">The same as <code>question</code>, but for easy read
-data.</td>
-</tr>
-<tr class="odd">
-<td align="right"><code>type_easy</code></td>
-<td align="left">The same as <code>type</code>, but for easy read
-data.</td>
-</tr>
-<tr class="even">
-<td align="right"><code>col_id_easy</code></td>
-<td align="left">The same as <code>col_id</code>, but for easy read
-data.</td>
-</tr>
-<tr class="odd">
-<td align="right"><code>assumed_easy</code></td>
-<td align="left">Assumed responses to give to missing columns in the
-easy read data.</td>
-</tr>
-<tr class="even">
-<td align="right"><code>omit</code></td>
-<td align="left">Irrelevant columns to delete. This should contain only
-TRUE or FALSE.</td>
-</tr>
-<tr class="odd">
-<td align="right"><code>custom_map</code></td>
-<td align="left">The name of the sheet in manifest.xlsx with the custom
-mappings for certain questions(s).</td>
-</tr>
-</tbody>
-</table>
-<p>For all other columns that have different data that can be mapped
-from easy read to main, fill in said mappings in a new sheet called map,
-followed by a digit that corresponds to the col_id of the main
-question.</p>
-<p>If your data has any common answer type that is used more than once
-in your data (yes/no, likert, etc.), instead of a digit, just use a
-custom name such as “map_yesno” or “map_likert” as used in the
-example.</p>
-<p>The example manifest file contains map_yesno, map_likert, map2, map4,
-and map6 relating to the eight questions that need standardising between
-main and easy read versions of the data.</p>
-<p>In each of these sheets, give the mappings for main, easy read, then
-the final mappings that everything should be set to.</p>
-<p>For example, the map_likert sheet may look something like this…</p>
-<table>
-<thead>
-<tr class="header">
-<th align="left">main</th>
-<th align="left">easy</th>
-<th align="left">final</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">Strongly agree</td>
-<td align="left">Definitely agree</td>
-<td align="left">Strongly agree</td>
-</tr>
-<tr class="even">
-<td align="left">Agree</td>
-<td align="left">Agree</td>
-<td align="left">Agree</td>
-</tr>
-<tr class="odd">
-<td align="left">Disagree</td>
-<td align="left">Disagree</td>
-<td align="left">Disagree</td>
-</tr>
-<tr class="even">
-<td align="left">Strongly disagree</td>
-<td align="left">Definitely disagree</td>
-<td align="left">Strongly disagree</td>
-</tr>
-<tr class="odd">
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-</tr>
-</tbody>
-</table>
-<p>…and the one of the map sheets may look something like this:</p>
-<table>
-<colgroup>
-<col width="31%" />
-<col width="31%" />
-<col width="36%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th align="left">main</th>
-<th align="left">easy</th>
-<th align="left">final</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">East Midlands</td>
-<td align="left">East Midlands</td>
-<td align="left">East Midlands</td>
-</tr>
-<tr class="even">
-<td align="left">East of England</td>
-<td align="left">East of England</td>
-<td align="left">East of England</td>
-</tr>
-<tr class="odd">
-<td align="left">London</td>
-<td align="left">London</td>
-<td align="left">London</td>
-</tr>
-<tr class="even">
-<td align="left">North East England</td>
-<td align="left">North</td>
-<td align="left">North</td>
-</tr>
-<tr class="odd">
-<td align="left">North West England</td>
-<td align="left">North</td>
-<td align="left">North</td>
-</tr>
-<tr class="even">
-<td align="left">South East England</td>
-<td align="left">South</td>
-<td align="left">South</td>
-</tr>
-<tr class="odd">
-<td align="left">South West England</td>
-<td align="left">South</td>
-<td align="left">South</td>
-</tr>
-<tr class="even">
-<td align="left">West Midlands</td>
-<td align="left">West Midlands</td>
-<td align="left">West Midlands</td>
-</tr>
-<tr class="odd">
-<td align="left">Yorkshire and the Humber</td>
-<td align="left">Yorkshire and the Humber</td>
-<td align="left">Yorkshire and the Humber</td>
-</tr>
-<tr class="even">
-<td align="left">Prefer not to say</td>
-<td align="left">I do not want to say</td>
-<td align="left">Prefer not to say</td>
-</tr>
-<tr class="odd">
-<td align="left">NA</td>
-<td align="left">NA</td>
-<td align="left">NA</td>
-</tr>
-</tbody>
-</table>
-<p>Filling out the manifest carefully should ensure all your data is
-cleaned and standardised, without the hassle of adding lots of extra
-code.</p>
-</div>
-<div id="further-tweaking-of-the-data-cleaning-code" class="section level3">
-<h3>Further tweaking of the data cleaning code</h3>
-<p>Now you’ve made the manifest file, you may find there are a handful
-of more fiddly bits of data cleaning to do.</p>
-<p><strong>Firstly, you’ll need to add some metadata to <a href>config.yml</a>.</strong></p>
-<table>
-<colgroup>
-<col width="27%" />
-<col width="72%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th align="right">general_params</th>
-<th align="left">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="right">date_main</td>
-<td align="left">The closing date of the main consultation.</td>
-</tr>
-<tr class="even">
-<td align="right">date_easy</td>
-<td align="left">The closing date of the easy read consultation.</td>
-</tr>
-<tr class="odd">
-<td align="right">input_dir</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="even">
-<td align="right">output_dir</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="odd">
-<td align="right">responses_dir</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="even">
-<td align="right">manifest_dir</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="odd">
-<td align="right">output_frequency</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="even">
-<td align="right">qa_file_dir</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="odd">
-<td align="right">responses_prefix</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="even">
-<td align="right">main_suffix</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="odd">
-<td align="right">easy_suffix</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="even">
-<td align="right">hard_copies_flag</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="odd">
-<td align="right">manifest_file</td>
-<td align="left">Directory or path (leave as is).</td>
-</tr>
-<tr class="even">
-<td align="right">include_hard_copies</td>
-<td align="left">Do you have hard copies to add (emails, postal,
-etc)?</td>
-</tr>
-<tr class="odd">
-<td align="right">include_easyread</td>
-<td align="left">Do you have easy read data to add?</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Secondly, you need to make sure your data files are named as
-expected.</strong></p>
-<p>You may have noticed the config has given paths, directories, and
-parts of filenames. You need to make sure your data are named to fit
-these. This example shows the main data, the easy read, the hard copies
-for both of these respectively. These are put into the <a href="https://github.com/DataS-DHSC/consultation_example/tree/main/input/responses">responses</a>
-folder.</p>
-<ul>
-<li>responses_2024-01-09.xlsx</li>
-<li>responses_2024-01-09_easyread.xlsx</li>
-<li>responses_2024-01-09_hard_copies.xlsx</li>
-<li>responses_2024-01-09_hard_copies_easyread.xlsx</li>
-</ul>
-<p><strong>Finally, due to the potentially unique nature of remaining
-data quality issues, the rest of the data cleaning and extra table
-generation is left to you to complete.</strong></p>
-<p>We have including some useful code in this example in <a href="https://github.com/DataS-DHSC/consultation_example/blob/main/R/1-load-data.R">run_load_data()</a>
-such as:</p>
-<ul>
-<li>standardising free text data into ONS age categories using the
-text_to_age() function.</li>
-<li>how to output a table for just individuals.</li>
-<li>how to output a frequency table of counts by location.</li>
-</ul>
-</div>
-<div id="running-the-data-cleaning-code-to-get-the-final-big-table" class="section level3">
-<h3>Running the data cleaning code to get the final big table</h3>
-<p>Running the <a href="https://github.com/DataS-DHSC/consultation_example/blob/main/R/1-load-data.R">run_load_data()</a>
-line in main.R should output the cleaned and standardised table.</p>
 <p><em>This github repo is currently a work in progress. Please contact
-<a href="mailto:DataScience@dhsc.gov.uk" class="email">DataScience@dhsc.gov.uk</a> if you have any questions
-and/or ideas for improvements.</em></p>
+<a href="mailto:DataScience@dhsc.gov.uk" class="email">DataScience@dhsc.gov.uk</a> if you have any questions or
+ideas for improvements.</em></p>
+<p>In the R folder, you will find quarto files with template code to run
+a basic consultation analysis. Feel free to run through these files as
+they are, or copy and paste out into your own scripts. - <a href="https://github.com/DataS-DHSC/consultation_example/blob/main/R/01_load_data.qmd">01_load_data.qmd</a>
+- <a href="https://github.com/DataS-DHSC/consultation_example/blob/main/R/02_pre-process_responses.qmd">02_pre-process_responses.qmd</a>
+- <a href="https://github.com/DataS-DHSC/consultation_example/blob/main/R/03_lda_analysis.qmd">03_lda_analysis.qmd</a>
+- <a href="https://github.com/DataS-DHSC/consultation_example/blob/main/R/04_output_for_labellers.qmd">04_output_for_labellers.qmd</a></p>
+<div id="usage" class="section level2">
+<h2>Usage</h2>
+<div id="random-seeds" class="section level3">
+<h3>Random Seeds</h3>
+<p>For reproducibility we give the lda functions a random seed. We
+recommend setting this to the long-form of a date relevant to the
+project, e.g. 20250102. This ensures that different projects are using
+different seeds, which has become an issue in random simulations.
+e.g. some projects had statistical quirks because almost every project
+was using one of “42”, “1234”, … etc.</p>
+<p>For best practise we would recommend using a second seed as a
+sensitivity analysis - asking whether the results are similar-enough if
+the seed is changed.</p>
+</div>
+<div id="statistical-disclosure" class="section level3">
+<h3>Statistical Disclosure</h3>
+<p><em>If in doubt on this section, consult a member of the Government
+Statistical Service (GSS)</em></p>
+<p>The outputs of this library should not be immediately published, but
+will likely go into the consultation response publication. It is
+important that individuals are not identifiable from the outputs.</p>
+<p>Before publication, counts should be rounded to the nearest 5 and
+counts below 10 should be suppressed.</p>
+<p>This should be considered within the context that a consultation is
+not a survey, and the outputs are not intended to be representative of
+the population.</p>
 </div>
 </div>
 
