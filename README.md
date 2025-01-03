@@ -16,7 +16,7 @@ For best practise we would recommend using a second seed as a sensitivity analys
 
 ### Statistical Disclosure
 
-*If in doubt on this section, consult a member of the Government Statistical Service (GSS)*
+*If in doubt on this section, consult statistics@DHSC.gov.uk*
 
 The outputs of this library should not be immediately published, but will likely go into the consultation response publication. It is important that individuals are not identifiable from the outputs. 
 
