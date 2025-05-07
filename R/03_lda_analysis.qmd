@@ -130,7 +130,7 @@ lda_fits_low_res <- responses_lda %>%
 
 #### Check model convergence
 
-The LDA implementation uses Gibbs sampling to calculate distributions. This means that sufficient iterations of the model need to be made to ensure that it has reached its stationary state and so the log-likelihood has stabilised to a particular value. The convergence graphs show the log-likelihood across sequential iterations as well as a black line representing the calculated mean log-likelihood based on a set of samples (defaults to every 50 iterations) after an initial burn in period (defaults to 1000 iterations). If the model has not settled to a single log-likelihood then you will need to re-run the model using a greater burn-in period and/or number of iterations.
+The LDA implementation uses Gibbs sampling to calculate distributions. This means that sufficient iterations of the model need to be made to ensure that it has reached its stationary state and so the log-likelihood has stabilised to a particular value. The convergence graphs show the log-likelihood across sequential iterations as well as a black line representing the calculated mean log-likelihood based on a set of samples (defaults to every 50 iterations) after an initial burn in period (defaults to 1000 iterations). If the model's log-likelihood has not stabilised (typically seen as fluctuating around a consistent value rather than trending upward) then you should re-run the model with a longer burn-in period and/or more iterations.
 
 ```{r}
 lda_fits_low_res %>%
